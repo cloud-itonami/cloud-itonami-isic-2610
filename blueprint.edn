@@ -1,0 +1,10 @@
+{:itonami.blueprint/id "cloud-itonami-2610"
+ :itonami.blueprint/name "Semiconductor and Electronics Manufacturing Enablement"
+ :itonami.blueprint/isic-rev5 "2610"
+ :itonami.blueprint/domain :manufacturing/semiconductor
+ :itonami.blueprint/license "AGPL-3.0-or-later"
+ :itonami.blueprint/social-impact [:supply-resilience :industrial-jobs :technology-access]
+ :itonami.blueprint/governor :fab-operations-governor
+ :itonami.blueprint/robotics true
+ :itonami.blueprint/required-technologies [:robotics :eda :cae :dmn :bpmn :audit-ledger]
+ :itonami.blueprint/status :public-oss}
