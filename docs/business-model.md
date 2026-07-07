@@ -1,7 +1,7 @@
 # Business Model: Semiconductor and Electronics Manufacturing Enablement
 
 ## Classification
-- Repository: `cloud-itonami-2610`
+- Repository: `cloud-itonami-isic-2610`
 - ISIC Rev.5: `2610` — semiconductor and electronics manufacturing enablement — fab and test operations for small-batch/legacy nodes
 - Social impact: supply-resilience industrial-jobs technology-access
 
@@ -19,3 +19,10 @@
 - a robot action the governor refuses is never dispatched to hardware
 - every dispatch, hold, approval and disclosure path is auditable
 - sensitive operating and personal data stays outside Git
+- a fabricated process-safety citation, incomplete evidence, an
+  unresolved process-defect flag, or an insufficient yield rate --
+  each forces a hold, not an override
+- yield-audit finalization is logged and escalated, and cannot be
+  finalized twice for the same lot: a double-finalization attempt is
+  held off this actor's own lot facts alone, with no upstream
+  comparison needed
