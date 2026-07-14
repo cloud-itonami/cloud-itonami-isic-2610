@@ -63,22 +63,37 @@
   {:lots
    {"lot-1" {:id "lot-1" :lot-name "Sakura Fab Lot 4"
              :good-dies 90 :total-dies 100 :required-yield-share 0.85
+             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
              :process-defect-flag-unresolved? false
+             :robotics-sim-verified? false :robotics-sim-record nil
              :process-step-dispatched? false :yield-audit-finalized? false
              :jurisdiction "JPN" :status :intake}
     "lot-2" {:id "lot-2" :lot-name "Atlantis Fab Lot"
              :good-dies 90 :total-dies 100 :required-yield-share 0.85
+             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
              :process-defect-flag-unresolved? false
+             :robotics-sim-verified? false :robotics-sim-record nil
              :process-step-dispatched? false :yield-audit-finalized? false
              :jurisdiction "ATL" :status :intake}
     "lot-3" {:id "lot-3" :lot-name "鈴木ファブロット"
              :good-dies 70 :total-dies 100 :required-yield-share 0.85
+             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
              :process-defect-flag-unresolved? false
+             :robotics-sim-verified? false :robotics-sim-record nil
              :process-step-dispatched? false :yield-audit-finalized? false
              :jurisdiction "JPN" :status :intake}
     "lot-4" {:id "lot-4" :lot-name "田中ファブロット"
              :good-dies 90 :total-dies 100 :required-yield-share 0.85
+             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
              :process-defect-flag-unresolved? true
+             :robotics-sim-verified? false :robotics-sim-record nil
+             :process-step-dispatched? false :yield-audit-finalized? false
+             :jurisdiction "JPN" :status :intake}
+    "lot-5" {:id "lot-5" :lot-name "佐藤ファブロット"
+             :good-dies 90 :total-dies 100 :required-yield-share 0.85
+             :bond-pull-strength-actual 3.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
+             :process-defect-flag-unresolved? false
+             :robotics-sim-verified? true :robotics-sim-record nil
              :process-step-dispatched? false :yield-audit-finalized? false
              :jurisdiction "JPN" :status :intake}}})
 
@@ -189,7 +204,8 @@
 (defn- dec* [s] (when s (edn/read-string s)))
 
 (defn- lot->tx [{:keys [id lot-name good-dies total-dies required-yield-share
-                        process-defect-flag-unresolved?
+                        bond-pull-strength-actual bond-pull-strength-min bond-pull-strength-max
+                        process-defect-flag-unresolved? robotics-sim-verified? robotics-sim-record
                         process-step-dispatched? yield-audit-finalized?
                         jurisdiction status dispatch-number audit-number]}]
   (cond-> {:lot/id id}
@@ -197,7 +213,12 @@
     good-dies                                (assoc :lot/good-dies good-dies)
     total-dies                               (assoc :lot/total-dies total-dies)
     required-yield-share                     (assoc :lot/required-yield-share required-yield-share)
+    bond-pull-strength-actual                (assoc :lot/bond-pull-strength-actual bond-pull-strength-actual)
+    bond-pull-strength-min                   (assoc :lot/bond-pull-strength-min bond-pull-strength-min)
+    bond-pull-strength-max                   (assoc :lot/bond-pull-strength-max bond-pull-strength-max)
     (some? process-defect-flag-unresolved?)  (assoc :lot/process-defect-flag-unresolved? process-defect-flag-unresolved?)
+    (some? robotics-sim-verified?)            (assoc :lot/robotics-sim-verified? robotics-sim-verified?)
+    (some? robotics-sim-record)               (assoc :lot/robotics-sim-record (enc robotics-sim-record))
     (some? process-step-dispatched?)         (assoc :lot/process-step-dispatched? process-step-dispatched?)
     (some? yield-audit-finalized?)           (assoc :lot/yield-audit-finalized? yield-audit-finalized?)
     jurisdiction                              (assoc :lot/jurisdiction jurisdiction)
@@ -207,7 +228,9 @@
 
 (def ^:private lot-pull
   [:lot/id :lot/lot-name :lot/good-dies :lot/total-dies :lot/required-yield-share
-   :lot/process-defect-flag-unresolved? :lot/process-step-dispatched? :lot/yield-audit-finalized?
+   :lot/bond-pull-strength-actual :lot/bond-pull-strength-min :lot/bond-pull-strength-max
+   :lot/process-defect-flag-unresolved? :lot/robotics-sim-verified? :lot/robotics-sim-record
+   :lot/process-step-dispatched? :lot/yield-audit-finalized?
    :lot/jurisdiction :lot/status :lot/dispatch-number :lot/audit-number])
 
 (defn- pull->lot [m]
@@ -216,7 +239,12 @@
      :good-dies (:lot/good-dies m)
      :total-dies (:lot/total-dies m)
      :required-yield-share (:lot/required-yield-share m)
+     :bond-pull-strength-actual (:lot/bond-pull-strength-actual m)
+     :bond-pull-strength-min (:lot/bond-pull-strength-min m)
+     :bond-pull-strength-max (:lot/bond-pull-strength-max m)
      :process-defect-flag-unresolved? (boolean (:lot/process-defect-flag-unresolved? m))
+     :robotics-sim-verified? (boolean (:lot/robotics-sim-verified? m))
+     :robotics-sim-record (dec* (:lot/robotics-sim-record m))
      :process-step-dispatched? (boolean (:lot/process-step-dispatched? m))
      :yield-audit-finalized? (boolean (:lot/yield-audit-finalized? m))
      :jurisdiction (:lot/jurisdiction m) :status (:lot/status m)

@@ -10,17 +10,19 @@
   -- the fab-operator analog of `cloud-itonami-isic-6512`'s
   CasualtyGovernor.
 
-  Six checks, in priority order, ALL HARD violations: a human approver
-  CANNOT override them (you don't get to approve your way past a
-  fabricated process-safety spec-basis, incomplete evidence, an
-  unresolved process-defect flag, an insufficient yield rate, or a
-  double dispatch/finalization). The confidence/actuation gate is
-  SOFT: it asks a human to look (low confidence / actuation), and the
-  human may approve -- but see `fab.phase`: for `:stake :actuation/
-  dispatch-process-step`/`:actuation/finalize-yield-audit` (a real
-  safety-critical/business-critical act) NO phase ever allows auto-
-  commit either. Two independent layers agree that actuation is
-  always a human call.
+  Seven checks, in priority order, ALL HARD violations: a human
+  approver CANNOT override them (you don't get to approve your way
+  past a fabricated process-safety spec-basis, incomplete evidence, a
+  robot wafer-probe/wire-bond verification mission that never ran or
+  that independently re-checks out-of-tolerance, an unresolved
+  process-defect flag, an insufficient yield rate, or a double
+  dispatch/finalization). The confidence/actuation gate is SOFT: it
+  asks a human to look (low confidence / actuation), and the human may
+  approve -- but see `fab.phase`: for `:stake :actuation/dispatch-
+  process-step`/`:actuation/finalize-yield-audit` (a real safety-
+  critical/business-critical act) NO phase ever allows auto-commit
+  either. Two independent layers agree that actuation is always a
+  human call.
 
     1. Spec-basis                  -- did the requirements proposal cite
                                        an OFFICIAL source (`fab.
@@ -35,7 +37,28 @@
                                        safety-clearance-record/wafer-
                                        lot-traceability-record
                                        evidence checklist on file?
-    3. Process defect flag
+    3. Robot simulation missing or
+       independently out-of-
+       tolerance                    -- for `:actuation/dispatch-
+                                       process-step`, has the robot
+                                       wafer-probe/optical-inspection/
+                                       wire-bond-pull-test verification
+                                       mission (`fab.robotics`)
+                                       actually run and been recorded
+                                       on the lot (`:robotics-sim-
+                                       verified?`)? AND INDEPENDENTLY
+                                       recompute whether the lot's own
+                                       recorded bond-pull-strength
+                                       reading falls out of its own
+                                       recorded tolerance bounds
+                                       (`fab.robotics/simulation-out-
+                                       of-tolerance?`), ignoring
+                                       whatever :passed? verdict the
+                                       mission run itself stored --
+                                       the same 'ground truth, not
+                                       self-report' discipline check 5
+                                       below uses for yield rate.
+    4. Process defect flag
        unresolved                     -- reported by THIS proposal
                                        itself (a `:defect/screen` that
                                        just found one), or already on
@@ -58,7 +81,7 @@
                                        actuation op against an
                                        unscreened lot -- see this ns's
                                        own test suite.
-    4. Yield rate insufficient      -- for `:actuation/finalize-
+    5. Yield rate insufficient      -- for `:actuation/finalize-
                                        yield-audit`, INDEPENDENTLY
                                        recompute whether the lot's own
                                        good-dies divided by its own
@@ -78,7 +101,7 @@
                                        `union.governor/strike-vote-
                                        share-insufficient-violations`
                                        established the first three).
-    5. Confidence floor / actuation
+    6. Confidence floor / actuation
        gate                          -- LLM confidence below threshold,
                                        OR the op is `:actuation/
                                        dispatch-process-step`/
@@ -98,6 +121,7 @@
   lifecycle bug (ADR-2607071320)."
   (:require [fab.facts :as facts]
             [fab.registry :as registry]
+            [fab.robotics :as robotics]
             [fab.store :as store]))
 
 (def confidence-floor 0.6)
@@ -141,6 +165,30 @@
                       (:jurisdiction l) (:checklist verification)))
         [{:rule :evidence-incomplete
           :detail "法域の必要書類(工程仕様検証記録/EDA・CAEシミュレーション記録/化学物質安全許可記録/ウェハーロット追跡記録等)が充足していない状態での提案"}]))))
+
+(defn- robotics-simulation-violations
+  "For `:actuation/dispatch-process-step`: HARD hold if the robot
+  wafer-probe/optical-inspection/wire-bond-pull-test verification
+  mission (`fab.robotics`) never ran and was recorded on the lot
+  (`:robotics-sim-verified?`), OR if it did but an INDEPENDENT
+  recompute of the lot's own bond-pull-strength fields (`fab.robotics/
+  simulation-out-of-tolerance?`) says out-of-tolerance right now --
+  never trusts the mission's own stored :passed? verdict alone, the
+  same discipline `yield-rate-insufficient-violations` below uses for
+  yield rate."
+  [{:keys [op subject]} st]
+  (when (= op :actuation/dispatch-process-step)
+    (let [l (store/lot st subject)]
+      (cond
+        (not (:robotics-sim-verified? l))
+        [{:rule :robotics-simulation-missing
+          :detail (str subject " のウェハープローブ/ワイヤーボンド検証ミッションが未実行・未合格")}]
+
+        (robotics/simulation-out-of-tolerance? l)
+        [{:rule :robotics-simulation-out-of-tolerance
+          :detail (str subject " のワイヤーボンドプル強度実測値("
+                       (:bond-pull-strength-actual l) ")が独立再検証で許容範囲["
+                       (:bond-pull-strength-min l) "," (:bond-pull-strength-max l) "]を逸脱")}]))))
 
 (defn- process-defect-flag-unresolved-violations
   "An unresolved process-defect flag -- reported by THIS proposal (e.g.
@@ -199,6 +247,7 @@
   (let [hard (into []
                    (concat (spec-basis-violations request proposal)
                            (evidence-incomplete-violations request st)
+                           (robotics-simulation-violations request st)
                            (process-defect-flag-unresolved-violations request proposal st)
                            (yield-rate-insufficient-violations request st)
                            (already-dispatched-violations request st)

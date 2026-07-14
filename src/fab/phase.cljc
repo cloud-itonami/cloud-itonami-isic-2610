@@ -6,8 +6,9 @@
     Phase 1  assisted-intake  -- lot intake allowed, every write needs
                                  human approval.
     Phase 2  assisted-verify  -- adds requirements verification +
-                                 process-defect-flag screening writes,
-                                 still approval.
+                                 process-defect-flag screening + robot
+                                 wafer-probe/wire-bond verification
+                                 writes, still approval.
     Phase 3  supervised auto  -- governor-clean, high-confidence
                                  `:lot/intake` (no capital risk yet)
                                  may auto-commit. `:actuation/
@@ -24,14 +25,16 @@
   engineer's call. `fab.governor`'s `:actuation/dispatch-process-
   step`/`:actuation/finalize-yield-audit` high-stakes gate enforces
   the same invariant independently -- two layers, not one, agree on
-  this. `:defect/screen` is likewise never auto-eligible, at any
-  phase -- the same posture every sibling's screening op has. Phase
-  3's `:auto` set here has only ONE member (`:lot/intake`) -- this
-  domain has no separate no-capital-risk 'file' lifecycle distinct
-  from the lot record itself.")
+  this. `:defect/screen`/`:robotics/simulate-process-step` are
+  likewise never auto-eligible, at any phase -- the same posture every
+  sibling's screening/verification op has. Phase 3's `:auto` set here
+  has only ONE member (`:lot/intake`) -- this domain has no separate
+  no-capital-risk 'file' lifecycle distinct from the lot record
+  itself.")
 
 (def read-ops  #{})
 (def write-ops #{:lot/intake :requirements/verify :defect/screen
+                 :robotics/simulate-process-step
                  :actuation/dispatch-process-step :actuation/finalize-yield-audit})
 
 ;; NOTE the invariant: `:actuation/dispatch-process-step`/`:actuation/
@@ -43,7 +46,8 @@
   auto-commit when governor-clean>}."
   {0 {:label "read-only"        :writes #{}                                                          :auto #{}}
    1 {:label "assisted-intake"  :writes #{:lot/intake}                                               :auto #{}}
-   2 {:label "assisted-verify"  :writes #{:lot/intake :requirements/verify :defect/screen}            :auto #{}}
+   2 {:label "assisted-verify"  :writes #{:lot/intake :requirements/verify :defect/screen
+                                          :robotics/simulate-process-step}          :auto #{}}
    3 {:label "supervised-auto"  :writes write-ops
       :auto #{:lot/intake}}})
 
