@@ -44,6 +44,13 @@
     (println (exec! actor "t3" {:op :defect/screen :subject "lot-1"} operator))
     (println (approve! actor "t3"))
 
+    (println "== actuation/dispatch-process-step lot-1 before robotics simulation -> HARD hold (robotics-simulation-missing) ==")
+    (println (exec! actor "t3a" {:op :actuation/dispatch-process-step :subject "lot-1"} operator))
+
+    (println "== robotics/simulate-process-step lot-1 (robot wafer-probe/wire-bond mission; escalates -- human approves) ==")
+    (println (exec! actor "t3b" {:op :robotics/simulate-process-step :subject "lot-1"} operator))
+    (println (approve! actor "t3b"))
+
     (println "== actuation/dispatch-process-step lot-1 (always escalates -- actuation/dispatch-process-step) ==")
     (let [r (exec! actor "t4" {:op :actuation/dispatch-process-step :subject "lot-1"} operator)]
       (println r)
@@ -65,6 +72,11 @@
 
     (println "== actuation/finalize-yield-audit lot-3 (70/100 = 0.70 below 0.85 required -> HARD hold) ==")
     (println (exec! actor "t8" {:op :actuation/finalize-yield-audit :subject "lot-3"} operator))
+
+    (println "== actuation/dispatch-process-step lot-5 (robotics-sim on file, but bond-pull-strength 3.0 outside [6.0,12.0] tolerance on independent recheck -> HARD hold) ==")
+    (println (exec! actor "t8b" {:op :requirements/verify :subject "lot-5"} operator))
+    (println (approve! actor "t8b"))
+    (println (exec! actor "t8c" {:op :actuation/dispatch-process-step :subject "lot-5"} operator))
 
     (println "== defect/screen lot-4 (unresolved -> HARD hold, never reaches a human) ==")
     (println (exec! actor "t9" {:op :defect/screen :subject "lot-4"} operator))

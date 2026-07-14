@@ -174,6 +174,17 @@ The governor never dispatches hardware itself; `:high`/`:safety-
 critical` actions (such as handling wafers, chemicals and expensive/
 in-critical-supply lots) require human sign-off.
 
+**Robot process simulation is concrete, not just a flag** (ADR-2607142800/
+ADR-2607150500, extending ADR-2607011000): `fab.robotics` walks every
+lot through a robot-executed wafer-probe/optical-inspection/wire-bond
+verification mission (`kotoba.robotics` mission/action/telemetry-proof
+contracts) -- automated wafer-probe electrical test, robotic optical-
+defect inspection scan, automated wire-bond pull-test -- before
+`:actuation/dispatch-process-step` is proposable. The Fab Operations
+Governor independently re-derives the lot's own bond-pull-strength
+tolerance from ground-truth fields, never trusting the mission's
+self-reported verdict alone.
+
 ## Open business
 
 This repository is not only source code. It is a public, forkable
@@ -212,8 +223,9 @@ This blueprint resolves its technology stack via
 | `src/fab/store.cljc` | **Store** protocol -- `MemStore` ‖ `DatomicStore` (`langchain.db`) + append-only audit ledger + separate process-step-dispatch/yield-audit history. No dynamically-filed sub-record -- both actuation ops act directly on a pre-seeded lot, and the double-actuation guards check dedicated `:process-step-dispatched?`/`:yield-audit-finalized?` booleans rather than a `:status` value |
 | `src/fab/registry.cljc` | Process-step-dispatch + yield-audit draft records, plus `yield-rate-insufficient?` -- the FOURTH instance of this fleet's ratio-based check family (`leasing`/`behavioral`/`union` established the first three), MINIMUM-floor direction |
 | `src/fab/facts.cljc` | Per-jurisdiction fab process-safety catalog (national chemical/gas-handling regulator + SEMI international standards) with an official spec-basis citation per entry, honest coverage reporting |
-| `src/fab/fabadvisor.cljc` | **Fab Advisor** -- `mock-advisor` ‖ `llm-advisor`; intake/verification/defect-screening/process-step-dispatch/yield-audit proposals |
-| `src/fab/governor.cljc` | **Fab Operations Governor** -- 4 HARD checks (spec-basis · evidence-incomplete · process-defect-flag-unresolved, unconditional evaluation, the THIRTY-SECOND grounding of this discipline · yield-rate-insufficient, pure ground-truth ratio recompute) + already-dispatched/already-audited guards + 1 soft (confidence/actuation gate) |
+| `src/fab/fabadvisor.cljc` | **Fab Advisor** -- `mock-advisor` ‖ `llm-advisor`; intake/verification/defect-screening/robotics-simulation/process-step-dispatch/yield-audit proposals |
+| `src/fab/robotics.cljc` | Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission (`kotoba.robotics` mission/action/telemetry-proof), `bond-pull-strength-out-of-range?` ground truth + `simulation-out-of-tolerance?` independent recheck for the governor (ADR-2607142800/ADR-2607150500) |
+| `src/fab/governor.cljc` | **Fab Operations Governor** -- 5 HARD checks (spec-basis · evidence-incomplete · robotics-simulation missing/independently-out-of-tolerance (new, ADR-2607150500) · process-defect-flag-unresolved, unconditional evaluation, the THIRTY-SECOND grounding of this discipline · yield-rate-insufficient, pure ground-truth ratio recompute) + already-dispatched/already-audited guards + 1 soft (confidence/actuation gate) |
 | `src/fab/phase.cljc` | **Phase 0→3** -- read-only → assisted intake → assisted verify → supervised (both process-step dispatch and yield-audit finalization always human; lot intake is the ONLY auto-eligible op, no direct capital risk) |
 | `src/fab/operation.cljc` | **OperationActor** -- langgraph-clj StateGraph |
 | `src/fab/sim.cljc` | demo driver |
@@ -230,7 +242,8 @@ blueprint's own `docs/business-model.md` names as its Offer:
 |---|---|
 | Lot intake + per-jurisdiction process-safety checklisting, HARD-gated on an official spec-basis citation (`:lot/intake`/`:requirements/verify`) | Real fab/MES control-system integration, real robot motion-planning/process-tool control (see `fab.facts`'s docstring) |
 | Process-defect screening, evaluated unconditionally so the screening op itself can HARD-hold on its own finding (`:defect/screen`) | Real EDA/CAE finite-element/process-modeling simulation engine |
-| Process-step dispatch, HARD-gated on full evidence, plus a double-dispatch guard (`:actuation/dispatch-process-step`) | Fab operating-license application processes themselves |
+| Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission, required on file (and independently re-checked out-of-tolerance) before process-step dispatch (`:robotics/simulate-process-step`) | Real robot-cell telemetry integration (`fab.robotics` remains a deterministic simulation -- see its own docstring) |
+| Process-step dispatch, HARD-gated on full evidence plus the robotics-simulation mission, plus a double-dispatch guard (`:actuation/dispatch-process-step`) | Fab operating-license application processes themselves |
 | Yield-audit finalization, HARD-gated on full evidence and yield-rate sufficiency, plus a double-finalization guard (`:actuation/finalize-yield-audit`) | |
 | Immutable audit ledger for every intake/verification/screening/dispatch/finalization decision | |
 

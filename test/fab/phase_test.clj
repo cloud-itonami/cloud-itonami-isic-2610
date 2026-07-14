@@ -24,6 +24,17 @@
       (is (not (contains? auto :defect/screen))
           (str "phase " n " must not auto-commit :defect/screen")))))
 
+(deftest robotics-simulate-process-step-never-auto-at-any-phase
+  (testing "the robot wafer-probe/wire-bond verification mission carries no direct capital risk, but is still never auto-eligible, matching every sibling verification op in this fleet"
+    (doseq [[n {:keys [auto]}] phase/phases]
+      (is (not (contains? auto :robotics/simulate-process-step))
+          (str "phase " n " must not auto-commit :robotics/simulate-process-step")))))
+
+(deftest robotics-simulate-process-step-enabled-from-phase-2
+  (is (contains? (:writes (get phase/phases 2)) :robotics/simulate-process-step))
+  (is (contains? (:writes (get phase/phases 3)) :robotics/simulate-process-step))
+  (is (not (contains? (:writes (get phase/phases 1)) :robotics/simulate-process-step))))
+
 (deftest phase-0-is-fully-read-only
   (is (empty? (:writes (get phase/phases 0)))))
 

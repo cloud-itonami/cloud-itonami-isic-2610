@@ -22,9 +22,12 @@
       (is (false? (:process-defect-flag-unresolved? (store/lot s "lot-1"))))
       (is (= 70 (:good-dies (store/lot s "lot-3"))))
       (is (true? (:process-defect-flag-unresolved? (store/lot s "lot-4"))))
+      (is (false? (:robotics-sim-verified? (store/lot s "lot-1"))) "no robotics mission has run yet")
+      (is (true? (:robotics-sim-verified? (store/lot s "lot-5"))) "seeded as already-on-file")
+      (is (= 3.0 (:bond-pull-strength-actual (store/lot s "lot-5"))))
       (is (false? (:process-step-dispatched? (store/lot s "lot-1"))))
       (is (false? (:yield-audit-finalized? (store/lot s "lot-1"))))
-      (is (= ["lot-1" "lot-2" "lot-3" "lot-4"]
+      (is (= ["lot-1" "lot-2" "lot-3" "lot-4" "lot-5"]
              (mapv :id (store/all-lots s))))
       (is (nil? (store/defect-screen-of s "lot-1")))
       (is (nil? (store/verification-of s "lot-1")))
@@ -44,6 +47,13 @@
                                  :value {:id "lot-1" :lot-name "Sakura Fab Lot 4"}})
         (is (= "Sakura Fab Lot 4" (:lot-name (store/lot s "lot-1"))))
         (is (= 90 (:good-dies (store/lot s "lot-1"))) "unrelated field preserved"))
+      (testing "robotics-sim result commits via :lot/upsert and reads back"
+        (store/commit-record! s {:effect :lot/upsert
+                                 :value {:id "lot-1" :robotics-sim-verified? true
+                                        :robotics-sim-record {:mission-id "m-1" :passed? true}}})
+        (is (true? (:robotics-sim-verified? (store/lot s "lot-1"))))
+        (is (= {:mission-id "m-1" :passed? true} (:robotics-sim-record (store/lot s "lot-1"))))
+        (is (= 90 (:good-dies (store/lot s "lot-1"))) "unrelated field still preserved"))
       (testing "verification / defect-screen payloads commit and read back"
         (store/commit-record! s {:effect :verification/set :path ["lot-1"]
                                  :payload {:jurisdiction "JPN" :checklist ["a" "b"]}})

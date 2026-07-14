@@ -30,6 +30,7 @@
             [clojure.string :as str]
             [fab.facts :as facts]
             [fab.registry :as registry]
+            [fab.robotics :as robotics]
             [fab.store :as store]
             [langchain.model :as model]))
 
@@ -106,6 +107,35 @@
        :stake      nil
        :confidence 0.9})))
 
+(defn- simulate-process-step
+  "Runs the robot wafer-probe/optical-inspection/wire-bond-pull-test
+  verification mission (`fab.robotics`) and drafts its result as a
+  proposal. High confidence -- the mission itself is deterministic
+  simulated telemetry derived from the lot's own recorded bond-pull-
+  strength fields, not an LLM guess; the Fab Operations Governor still
+  independently re-derives :passed? from those same fields before any
+  `:actuation/dispatch-process-step` proposal may commit -- see `fab.
+  governor`'s `robotics-simulation-violations`."
+  [db {:keys [subject]}]
+  (let [l (store/lot db subject)]
+    (if (nil? l)
+      {:summary "対象ロット記録が見つかりません" :rationale "no lot record"
+       :cites [] :effect :lot/upsert :value {:id subject :robotics-sim-verified? false}
+       :stake nil :confidence 0.0}
+      (let [{:keys [mission actions passed?]} (robotics/simulate-process-step subject l)]
+        {:summary    (str subject ": ウェハープローブ/ワイヤーボンド検証ミッション " (if passed? "合格" "不合格"))
+         :rationale  (str "mission=" (:mission/id mission) " actions=" (count actions)
+                          " bond-pull-strength-actual=" (:bond-pull-strength-actual l))
+         :cites      [(:mission/id mission)]
+         :effect     :lot/upsert
+         :value      {:id subject
+                      :robotics-sim-verified? passed?
+                      :robotics-sim-record {:mission-id (:mission/id mission)
+                                            :actions (mapv #(dissoc % :action) actions)
+                                            :passed? passed?}}
+         :stake      nil
+         :confidence 0.95}))))
+
 (defn- propose-process-step-dispatch
   "Draft the actual PROCESS-STEP-DISPATCH action -- dispatching a
   real robot process-step action in the cleanroom. ALWAYS `:stake
@@ -159,6 +189,7 @@
     :lot/intake                            (normalize-intake db request)
     :requirements/verify                   (verify-requirements db request)
     :defect/screen                         (screen-defect db request)
+    :robotics/simulate-process-step        (simulate-process-step db request)
     :actuation/dispatch-process-step        (propose-process-step-dispatch db request)
     :actuation/finalize-yield-audit         (propose-yield-audit db request)
     {:summary "未対応の操作" :rationale (str op) :cites []
@@ -181,6 +212,8 @@
        ":cites(使った事実キーのベクタ) "
        ":effect(:lot/upsert|:verification/set|:defect-screen/set|"
        ":lot/mark-dispatched|:lot/mark-audited) "
+       "(:robotics/simulate-process-step も :lot/upsert で "
+       ":robotics-sim-verified? を提案する) "
        ":stake(:actuation/dispatch-process-step か :actuation/finalize-yield-audit か nil) :confidence(0..1)。\n"
        "重要: 登録されていない法域の要件を絶対に創作してはいけません。"
        "spec-basisが無い場合は :cites を空にし confidence を上げないこと。"))
@@ -189,6 +222,7 @@
   (case op
     :requirements/verify                    {:lot (store/lot st subject)}
     :defect/screen                          {:lot (store/lot st subject)}
+    :robotics/simulate-process-step         {:lot (store/lot st subject)}
     :actuation/dispatch-process-step        {:lot (store/lot st subject)}
     :actuation/finalize-yield-audit         {:lot (store/lot st subject)}
     {:lot (store/lot st subject)}))
