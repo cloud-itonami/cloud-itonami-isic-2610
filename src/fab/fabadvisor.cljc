@@ -110,29 +110,38 @@
 (defn- simulate-process-step
   "Runs the robot wafer-probe/optical-inspection/wire-bond-pull-test
   verification mission (`fab.robotics`) and drafts its result as a
-  proposal. High confidence -- the mission itself is deterministic
-  simulated telemetry derived from the lot's own recorded bond-pull-
-  strength fields, not an LLM guess; the Fab Operations Governor still
-  independently re-derives :passed? from those same fields before any
-  `:actuation/dispatch-process-step` proposal may commit -- see `fab.
-  governor`'s `robotics-simulation-violations`."
+  proposal. This now ACTUALLY calls the real `fab.simphysics` engine
+  (ADR-2607152000): a `physics-2d`-stepped wire-bond pull-test
+  trajectory (see `fab.robotics/simulate-process-step`'s docstring).
+  High confidence -- the mission itself is deterministic simulated
+  telemetry derived from the lot's own recorded `:bond-wire-diameter-
+  um` field (never an LLM guess); the Fab Operations Governor still
+  independently re-derives :passed? from the real telemetry fields
+  this drafts before any `:actuation/dispatch-process-step` proposal
+  may commit -- see `fab.governor`'s `robotics-simulation-violations`."
   [db {:keys [subject]}]
   (let [l (store/lot db subject)]
     (if (nil? l)
       {:summary "対象ロット記録が見つかりません" :rationale "no lot record"
        :cites [] :effect :lot/upsert :value {:id subject :robotics-sim-verified? false}
        :stake nil :confidence 0.0}
-      (let [{:keys [mission actions passed?]} (robotics/simulate-process-step subject l)]
+      (let [{:keys [mission actions passed? bond-pull-strength-actual sim-peak-decel-mps2 ticks dt pull-rate-mps]}
+            (robotics/simulate-process-step subject l)]
         {:summary    (str subject ": ウェハープローブ/ワイヤーボンド検証ミッション " (if passed? "合格" "不合格"))
          :rationale  (str "mission=" (:mission/id mission) " actions=" (count actions)
-                          " bond-pull-strength-actual=" (:bond-pull-strength-actual l))
+                          " bond-pull-strength-actual=" bond-pull-strength-actual
+                          " (physics-2d " ticks "ticks, dt=" dt "s, pull-rate=" pull-rate-mps "m/s)")
          :cites      [(:mission/id mission)]
          :effect     :lot/upsert
          :value      {:id subject
                       :robotics-sim-verified? passed?
+                      :bond-pull-strength-actual bond-pull-strength-actual
                       :robotics-sim-record {:mission-id (:mission/id mission)
                                             :actions (mapv #(dissoc % :action) actions)
-                                            :passed? passed?}}
+                                            :passed? passed?
+                                            :bond-pull-strength-actual bond-pull-strength-actual
+                                            :sim-peak-decel-mps2 sim-peak-decel-mps2
+                                            :ticks ticks :dt dt :pull-rate-mps pull-rate-mps}}
          :stake      nil
          :confidence 0.95}))))
 

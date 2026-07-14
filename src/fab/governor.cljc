@@ -49,15 +49,20 @@
                                        verified?`)? AND INDEPENDENTLY
                                        recompute whether the lot's own
                                        recorded bond-pull-strength
-                                       reading falls out of its own
-                                       recorded tolerance bounds
-                                       (`fab.robotics/simulation-out-
-                                       of-tolerance?`), ignoring
-                                       whatever :passed? verdict the
-                                       mission run itself stored --
-                                       the same 'ground truth, not
-                                       self-report' discipline check 5
-                                       below uses for yield rate.
+                                       reading -- as of ADR-2607152000,
+                                       the REAL `fab.simphysics`
+                                       `physics-2d`-simulated pull-test
+                                       force already on file, not a
+                                       hand-set value -- falls out of
+                                       its own recorded tolerance
+                                       bounds (`fab.robotics/
+                                       simulation-out-of-tolerance?`),
+                                       ignoring whatever :passed?
+                                       verdict the mission run itself
+                                       stored -- the same 'ground
+                                       truth, not self-report'
+                                       discipline check 5 below uses
+                                       for yield rate.
     4. Process defect flag
        unresolved                     -- reported by THIS proposal
                                        itself (a `:defect/screen` that
@@ -171,7 +176,8 @@
   wafer-probe/optical-inspection/wire-bond-pull-test verification
   mission (`fab.robotics`) never ran and was recorded on the lot
   (`:robotics-sim-verified?`), OR if it did but an INDEPENDENT
-  recompute of the lot's own bond-pull-strength fields (`fab.robotics/
+  recompute of the lot's own REAL `fab.simphysics`-simulated
+  bond-pull-strength fields (ADR-2607152000 -- `fab.robotics/
   simulation-out-of-tolerance?`) says out-of-tolerance right now --
   never trusts the mission's own stored :passed? verdict alone, the
   same discipline `yield-rate-insufficient-violations` below uses for
@@ -186,8 +192,9 @@
 
         (robotics/simulation-out-of-tolerance? l)
         [{:rule :robotics-simulation-out-of-tolerance
-          :detail (str subject " のワイヤーボンドプル強度実測値("
-                       (:bond-pull-strength-actual l) ")が独立再検証で許容範囲["
+          :detail (str subject " の実測ワイヤーボンドプル強度(physics-2d実時間ステップ再検証, 線径"
+                       (:bond-wire-diameter-um l) "μm→" (:bond-pull-strength-actual l)
+                       "gf)が独立再検証で許容範囲["
                        (:bond-pull-strength-min l) "," (:bond-pull-strength-max l) "]を逸脱")}]))))
 
 (defn- process-defect-flag-unresolved-violations

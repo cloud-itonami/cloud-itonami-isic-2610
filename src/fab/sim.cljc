@@ -1,5 +1,10 @@
 (ns fab.sim
-  "Demo driver -- `clojure -M:dev:run`. Walks a clean lot through
+  "Demo driver -- `clojure -M:dev:run`. `robotics/simulate-process-
+  step` now actually runs `fab.simphysics`'s real `physics-2d`-backed
+  time-stepped wire-bond pull-test simulation (ADR-2607152000,
+  generalizing ADR-2607151600's automotive pilot to this vertical) --
+  see `fab.robotics`/`fab.simphysics` for what is genuinely simulated
+  vs. disclosed simplification. Walks a clean lot through
   intake -> requirements verification -> process-defect screening ->
   process-step-dispatch proposal (always escalates) -> human approval
   -> commit, then through yield-audit proposal (always escalates) ->
@@ -47,7 +52,7 @@
     (println "== actuation/dispatch-process-step lot-1 before robotics simulation -> HARD hold (robotics-simulation-missing) ==")
     (println (exec! actor "t3a" {:op :actuation/dispatch-process-step :subject "lot-1"} operator))
 
-    (println "== robotics/simulate-process-step lot-1 (robot wafer-probe/wire-bond mission; escalates -- human approves) ==")
+    (println "== robotics/simulate-process-step lot-1 (real physics-2d wire-bond pull-test simulation, standard 25um wire; escalates -- human approves) ==")
     (println (exec! actor "t3b" {:op :robotics/simulate-process-step :subject "lot-1"} operator))
     (println (approve! actor "t3b"))
 
@@ -73,7 +78,7 @@
     (println "== actuation/finalize-yield-audit lot-3 (70/100 = 0.70 below 0.85 required -> HARD hold) ==")
     (println (exec! actor "t8" {:op :actuation/finalize-yield-audit :subject "lot-3"} operator))
 
-    (println "== actuation/dispatch-process-step lot-5 (robotics-sim on file, but bond-pull-strength 3.0 outside [6.0,12.0] tolerance on independent recheck -> HARD hold) ==")
+    (println "== actuation/dispatch-process-step lot-5 (robotics-sim on file, but a real re-run physics-2d pull-test simulation of this deliberately-too-thin 15um wire shows ~3.2gf, below the [6.0,12.0] tolerance, on independent recheck -> HARD hold) ==")
     (println (exec! actor "t8b" {:op :requirements/verify :subject "lot-5"} operator))
     (println (approve! actor "t8b"))
     (println (exec! actor "t8c" {:op :actuation/dispatch-process-step :subject "lot-5"} operator))

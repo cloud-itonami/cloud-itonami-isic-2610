@@ -35,6 +35,7 @@
   (:require #?(:clj  [clojure.edn :as edn]
                :cljs [cljs.reader :as edn])
             [fab.registry :as registry]
+            [fab.robotics :as robotics]
             [langchain.db :as d]))
 
 (defprotocol Store
@@ -55,47 +56,77 @@
 
 ;; ----------------------------- demo data -----------------------------
 
+(defn- with-bond-pull-telemetry
+  "Merges REAL bond-pull-test telemetry onto a demo lot's base fields --
+  `fab.robotics/bond-pull-telemetry-for` actually runs `fab.
+  simphysics`'s `physics-2d`-stepped simulation for this lot's own
+  `:bond-wire-diameter-um` (ADR-2607152000), so even the 'already on
+  file' seed data (as if from an earlier real destructive pull-test
+  report) is genuinely simulation-derived, never a hand-typed double."
+  [base]
+  (merge base (select-keys (robotics/bond-pull-telemetry-for base)
+                           [:bond-pull-strength-actual])))
+
 (defn demo-data
   "A small, self-contained lot set covering both actuation lifecycles
   (dispatching a process step, finalizing a yield audit) so the actor
-  + tests run offline."
+  + tests run offline. `:bond-wire-diameter-um` (ADR-2607152000) is a
+  permanent lot-design field (like `:good-dies`/`:total-dies`);
+  `:bond-pull-strength-actual` is the REAL `fab.simphysics`-computed
+  pull-test force for that field (`with-bond-pull-telemetry`), the
+  ground truth `fab.robotics/simulation-out-of-tolerance?` independently
+  rechecks against the UNCHANGED `:bond-pull-strength-min`/`:bond-pull-
+  strength-max` = [6.0 12.0] gf band. lot-5 is DELIBERATELY recorded
+  with a much thinner wire (`:bond-wire-diameter-um` 15.0, vs. the
+  standard ~25 μm the other lots use) -- a genuine process-record
+  inconsistency (a real gold bonding wire this thin genuinely pulls
+  well below this fab's own required minimum) that the real, re-run
+  simulation catches on independent recheck even though
+  `:robotics-sim-verified?` was seeded `true` (\"already on file\", i.e.
+  someone/something marked it passed without this real simulation ever
+  having run) -- the fab analog of automotive vehicle-5's
+  misclassification, which lot-1..4's genuinely-consistent standard
+  wire diameters clear the real tolerance band with margin (see
+  `fab.simphysics/reference-pull-force-gf`)."
   []
   {:lots
-   {"lot-1" {:id "lot-1" :lot-name "Sakura Fab Lot 4"
-             :good-dies 90 :total-dies 100 :required-yield-share 0.85
-             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
-             :process-defect-flag-unresolved? false
-             :robotics-sim-verified? false :robotics-sim-record nil
-             :process-step-dispatched? false :yield-audit-finalized? false
-             :jurisdiction "JPN" :status :intake}
-    "lot-2" {:id "lot-2" :lot-name "Atlantis Fab Lot"
-             :good-dies 90 :total-dies 100 :required-yield-share 0.85
-             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
-             :process-defect-flag-unresolved? false
-             :robotics-sim-verified? false :robotics-sim-record nil
-             :process-step-dispatched? false :yield-audit-finalized? false
-             :jurisdiction "ATL" :status :intake}
-    "lot-3" {:id "lot-3" :lot-name "鈴木ファブロット"
-             :good-dies 70 :total-dies 100 :required-yield-share 0.85
-             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
-             :process-defect-flag-unresolved? false
-             :robotics-sim-verified? false :robotics-sim-record nil
-             :process-step-dispatched? false :yield-audit-finalized? false
-             :jurisdiction "JPN" :status :intake}
-    "lot-4" {:id "lot-4" :lot-name "田中ファブロット"
-             :good-dies 90 :total-dies 100 :required-yield-share 0.85
-             :bond-pull-strength-actual 9.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
-             :process-defect-flag-unresolved? true
-             :robotics-sim-verified? false :robotics-sim-record nil
-             :process-step-dispatched? false :yield-audit-finalized? false
-             :jurisdiction "JPN" :status :intake}
-    "lot-5" {:id "lot-5" :lot-name "佐藤ファブロット"
-             :good-dies 90 :total-dies 100 :required-yield-share 0.85
-             :bond-pull-strength-actual 3.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
-             :process-defect-flag-unresolved? false
-             :robotics-sim-verified? true :robotics-sim-record nil
-             :process-step-dispatched? false :yield-audit-finalized? false
-             :jurisdiction "JPN" :status :intake}}})
+   (into {}
+         (map (fn [l] [(:id l) (with-bond-pull-telemetry l)]))
+         [{:id "lot-1" :lot-name "Sakura Fab Lot 4"
+           :good-dies 90 :total-dies 100 :required-yield-share 0.85
+           :bond-wire-diameter-um 25.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
+           :process-defect-flag-unresolved? false
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :process-step-dispatched? false :yield-audit-finalized? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "lot-2" :lot-name "Atlantis Fab Lot"
+           :good-dies 90 :total-dies 100 :required-yield-share 0.85
+           :bond-wire-diameter-um 26.5 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
+           :process-defect-flag-unresolved? false
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :process-step-dispatched? false :yield-audit-finalized? false
+           :jurisdiction "ATL" :status :intake}
+          {:id "lot-3" :lot-name "鈴木ファブロット"
+           :good-dies 70 :total-dies 100 :required-yield-share 0.85
+           :bond-wire-diameter-um 24.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
+           :process-defect-flag-unresolved? false
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :process-step-dispatched? false :yield-audit-finalized? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "lot-4" :lot-name "田中ファブロット"
+           :good-dies 90 :total-dies 100 :required-yield-share 0.85
+           :bond-wire-diameter-um 25.5 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
+           :process-defect-flag-unresolved? true
+           :robotics-sim-verified? false :robotics-sim-record nil
+           :process-step-dispatched? false :yield-audit-finalized? false
+           :jurisdiction "JPN" :status :intake}
+          {:id "lot-5" :lot-name "佐藤ファブロット"
+           :good-dies 90 :total-dies 100 :required-yield-share 0.85
+           :bond-wire-diameter-um 15.0 :bond-pull-strength-min 6.0 :bond-pull-strength-max 12.0
+           :process-defect-flag-unresolved? false
+           :robotics-sim-verified? true :robotics-sim-record nil
+           :process-step-dispatched? false :yield-audit-finalized? false
+           :jurisdiction "JPN" :status :intake}])})
 
 ;; ----------------------------- shared commit logic -----------------------------
 
@@ -204,6 +235,7 @@
 (defn- dec* [s] (when s (edn/read-string s)))
 
 (defn- lot->tx [{:keys [id lot-name good-dies total-dies required-yield-share
+                        bond-wire-diameter-um
                         bond-pull-strength-actual bond-pull-strength-min bond-pull-strength-max
                         process-defect-flag-unresolved? robotics-sim-verified? robotics-sim-record
                         process-step-dispatched? yield-audit-finalized?
@@ -213,6 +245,7 @@
     good-dies                                (assoc :lot/good-dies good-dies)
     total-dies                               (assoc :lot/total-dies total-dies)
     required-yield-share                     (assoc :lot/required-yield-share required-yield-share)
+    bond-wire-diameter-um                     (assoc :lot/bond-wire-diameter-um bond-wire-diameter-um)
     bond-pull-strength-actual                (assoc :lot/bond-pull-strength-actual bond-pull-strength-actual)
     bond-pull-strength-min                   (assoc :lot/bond-pull-strength-min bond-pull-strength-min)
     bond-pull-strength-max                   (assoc :lot/bond-pull-strength-max bond-pull-strength-max)
@@ -228,6 +261,7 @@
 
 (def ^:private lot-pull
   [:lot/id :lot/lot-name :lot/good-dies :lot/total-dies :lot/required-yield-share
+   :lot/bond-wire-diameter-um
    :lot/bond-pull-strength-actual :lot/bond-pull-strength-min :lot/bond-pull-strength-max
    :lot/process-defect-flag-unresolved? :lot/robotics-sim-verified? :lot/robotics-sim-record
    :lot/process-step-dispatched? :lot/yield-audit-finalized?
@@ -239,6 +273,7 @@
      :good-dies (:lot/good-dies m)
      :total-dies (:lot/total-dies m)
      :required-yield-share (:lot/required-yield-share m)
+     :bond-wire-diameter-um (:lot/bond-wire-diameter-um m)
      :bond-pull-strength-actual (:lot/bond-pull-strength-actual m)
      :bond-pull-strength-min (:lot/bond-pull-strength-min m)
      :bond-pull-strength-max (:lot/bond-pull-strength-max m)

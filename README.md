@@ -180,10 +180,40 @@ lot through a robot-executed wafer-probe/optical-inspection/wire-bond
 verification mission (`kotoba.robotics` mission/action/telemetry-proof
 contracts) -- automated wafer-probe electrical test, robotic optical-
 defect inspection scan, automated wire-bond pull-test -- before
-`:actuation/dispatch-process-step` is proposable. The Fab Operations
-Governor independently re-derives the lot's own bond-pull-strength
-tolerance from ground-truth fields, never trusting the mission's
-self-reported verdict alone.
+`:actuation/dispatch-process-step` is proposable.
+
+**This is now a REAL, time-stepped physics simulation, not a
+synthetic field comparison (ADR-2607152000, generalizing
+ADR-2607151600's automotive pilot to this vertical).** This repository
+takes a REAL git-coordinate dependency on
+[`kotoba-lang/physics-2d`](https://github.com/kotoba-lang/physics-2d)
+(pinned by SHA in `deps.edn`), and `fab.robotics/simulate-process-step`
+actually calls it via `fab.simphysics` (built DIRECTLY inside this
+repo -- fab has no sibling `kami-engine-*` design repo the way
+automotive pairs with `kami-engine-vehicle-designer`): a real
+time-stepped rigid-body simulation of the wire-bond destructive
+PULL test -- the lot's own `:bond-wire-diameter-um` becomes an actual
+`Body2D` (a mass-scaling abstraction proportional to the wire's real
+cross-sectional area) pulled at a real, representative pull-tester
+crosshead rate until it collides with a static, virtual
+"tension-limit" boundary positioned at the wire's own representative
+compliant-travel distance -- the real per-tick impulse `physics-2d`
+resolves at that stopping event is this actor's real
+`:bond-pull-strength-actual` reading. The Fab Operations Governor
+independently re-derives that REAL simulated reading against this
+actor's own UNCHANGED, already-established
+[:bond-pull-strength-min :bond-pull-strength-max] = [6.0 12.0] gf
+tolerance band, never trusting the mission's self-reported verdict
+alone. Honest scope: `physics-2d` only resolves collisions, so a pull
+(tension) event is modeled as its physical inverse -- an anchor
+travelling to, and stopping at, the wire's own tension limit -- and
+the pull-rate/travel-distance/mass-scaling constants are disclosed
+engineering priors, not independently-certified metrology; see
+`fab.simphysics`'s namespace docstring for the full, disclosed
+derivation. This real-engine wiring is scoped to fab (and, separately,
+to automotive) only; the other cloud-itonami manufacturing actors
+touched by ADR-2607142800 remain on the symbolic robotics-simulation
+layer until a similar integration is built for each.
 
 ## Open business
 
@@ -224,7 +254,8 @@ This blueprint resolves its technology stack via
 | `src/fab/registry.cljc` | Process-step-dispatch + yield-audit draft records, plus `yield-rate-insufficient?` -- the FOURTH instance of this fleet's ratio-based check family (`leasing`/`behavioral`/`union` established the first three), MINIMUM-floor direction |
 | `src/fab/facts.cljc` | Per-jurisdiction fab process-safety catalog (national chemical/gas-handling regulator + SEMI international standards) with an official spec-basis citation per entry, honest coverage reporting |
 | `src/fab/fabadvisor.cljc` | **Fab Advisor** -- `mock-advisor` ‖ `llm-advisor`; intake/verification/defect-screening/robotics-simulation/process-step-dispatch/yield-audit proposals |
-| `src/fab/robotics.cljc` | Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission (`kotoba.robotics` mission/action/telemetry-proof), `bond-pull-strength-out-of-range?` ground truth + `simulation-out-of-tolerance?` independent recheck for the governor (ADR-2607142800/ADR-2607150500) |
+| `src/fab/robotics.cljc` | Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission (`kotoba.robotics` mission/action/telemetry-proof), `bond-pull-strength-out-of-range?` ground truth + `simulation-out-of-tolerance?` independent recheck for the governor (ADR-2607142800/ADR-2607150500), now backed by a REAL `physics-2d` time-stepped simulation (ADR-2607152000) |
+| `src/fab/simphysics.cljc` | **REAL** time-stepped rigid-body wire-bond pull-test simulation on `kotoba-lang/physics-2d`'s real impulse solver -- derives `:bond-pull-strength-actual` from an actual simulated trajectory, not a hand-set field (ADR-2607152000) |
 | `src/fab/governor.cljc` | **Fab Operations Governor** -- 5 HARD checks (spec-basis · evidence-incomplete · robotics-simulation missing/independently-out-of-tolerance (new, ADR-2607150500) · process-defect-flag-unresolved, unconditional evaluation, the THIRTY-SECOND grounding of this discipline · yield-rate-insufficient, pure ground-truth ratio recompute) + already-dispatched/already-audited guards + 1 soft (confidence/actuation gate) |
 | `src/fab/phase.cljc` | **Phase 0→3** -- read-only → assisted intake → assisted verify → supervised (both process-step dispatch and yield-audit finalization always human; lot intake is the ONLY auto-eligible op, no direct capital risk) |
 | `src/fab/operation.cljc` | **OperationActor** -- langgraph-clj StateGraph |
@@ -242,7 +273,7 @@ blueprint's own `docs/business-model.md` names as its Offer:
 |---|---|
 | Lot intake + per-jurisdiction process-safety checklisting, HARD-gated on an official spec-basis citation (`:lot/intake`/`:requirements/verify`) | Real fab/MES control-system integration, real robot motion-planning/process-tool control (see `fab.facts`'s docstring) |
 | Process-defect screening, evaluated unconditionally so the screening op itself can HARD-hold on its own finding (`:defect/screen`) | Real EDA/CAE finite-element/process-modeling simulation engine |
-| Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission, required on file (and independently re-checked out-of-tolerance) before process-step dispatch (`:robotics/simulate-process-step`) | Real robot-cell telemetry integration (`fab.robotics` remains a deterministic simulation -- see its own docstring) |
+| Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission, required on file (and independently re-checked out-of-tolerance against a REAL `physics-2d` time-stepped simulation, ADR-2607152000) before process-step dispatch (`:robotics/simulate-process-step`) | Real robot-cell telemetry integration; a real 3D solver (`physics-2d` is a 2D projection); real EDA/CAE finite-element process modeling (`fab.simphysics` remains a deterministic, disclosed-simplification simulation -- see its own docstring) |
 | Process-step dispatch, HARD-gated on full evidence plus the robotics-simulation mission, plus a double-dispatch guard (`:actuation/dispatch-process-step`) | Fab operating-license application processes themselves |
 | Yield-audit finalization, HARD-gated on full evidence and yield-rate sufficiency, plus a double-finalization guard (`:actuation/finalize-yield-audit`) | |
 | Immutable audit ledger for every intake/verification/screening/dispatch/finalization decision | |

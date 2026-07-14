@@ -6,6 +6,7 @@
   `underwriting.store-contract-test` for the same pattern on the sibling
   actor."
   (:require [clojure.test :refer [deftest is testing]]
+            [fab.robotics :as robotics]
             [fab.store :as store]))
 
 (defn- backends []
@@ -24,7 +25,14 @@
       (is (true? (:process-defect-flag-unresolved? (store/lot s "lot-4"))))
       (is (false? (:robotics-sim-verified? (store/lot s "lot-1"))) "no robotics mission has run yet")
       (is (true? (:robotics-sim-verified? (store/lot s "lot-5"))) "seeded as already-on-file")
-      (is (= 3.0 (:bond-pull-strength-actual (store/lot s "lot-5"))))
+      (is (= 25.0 (:bond-wire-diameter-um (store/lot s "lot-1"))))
+      (is (number? (:bond-pull-strength-actual (store/lot s "lot-1"))) "real fab.simphysics telemetry on file")
+      (is (not (robotics/bond-pull-strength-out-of-range? (store/lot s "lot-1")))
+          "lot-1's real standard-wire-diameter pull-test simulation clears the real tolerance band")
+      (is (= 15.0 (:bond-wire-diameter-um (store/lot s "lot-5")))
+          "lot-5 is deliberately recorded with a much thinner wire -- see fab.store/demo-data")
+      (is (< (:bond-pull-strength-actual (store/lot s "lot-5")) (:bond-pull-strength-min (store/lot s "lot-5")))
+          "lot-5's real simulated pull force genuinely falls below the real tolerance band")
       (is (false? (:process-step-dispatched? (store/lot s "lot-1"))))
       (is (false? (:yield-audit-finalized? (store/lot s "lot-1"))))
       (is (= ["lot-1" "lot-2" "lot-3" "lot-4" "lot-5"]

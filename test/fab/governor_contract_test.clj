@@ -47,12 +47,14 @@
 (defn- simulate-robotics!
   "Walks `subject` through the robot wafer-probe/optical-inspection/
   wire-bond-pull-test verification mission -> approve, leaving
-  `:robotics-sim-verified?` on file. Only meaningful to call for a lot
-  whose bond-pull-strength is actually within tolerance -- an out-of-
-  tolerance lot still gets :robotics-sim-verified? recorded (per
-  whatever the mission itself found), but `fab.governor`'s independent
-  recheck HARD-holds regardless (see `robotics-simulation-out-of-
-  tolerance-is-held`)."
+  `:robotics-sim-verified?` on file. This now ACTUALLY runs the real
+  `fab.simphysics`-backed pull-test simulation for the lot's own
+  `:bond-wire-diameter-um` (ADR-2607152000) -- only meaningful to call
+  for a lot whose real simulated pull-test force is actually within
+  tolerance -- an out-of-tolerance lot still gets :robotics-sim-
+  verified? recorded (per whatever the mission itself found), but
+  `fab.governor`'s independent recheck HARD-holds regardless (see
+  `robotics-simulation-out-of-tolerance-is-held`)."
   [actor tid-prefix subject]
   (exec-op actor (str tid-prefix "-robotics") {:op :robotics/simulate-process-step :subject subject} operator)
   (approve! actor (str tid-prefix "-robotics")))
@@ -178,7 +180,7 @@
       (is (empty? (store/dispatch-history db))))))
 
 (deftest robotics-simulation-out-of-tolerance-is-held
-  (testing "lot-5 has a robotics-sim already on file, but its own bond-pull-strength reading falls outside its own tolerance bounds on INDEPENDENT recheck -> HOLD, never trusts the on-file verdict alone"
+  (testing "lot-5 has a robotics-sim already on file, but its own REAL fab.simphysics-simulated bond-pull-strength reading (ADR-2607152000) falls outside the real tolerance band on INDEPENDENT recheck -> HOLD, never trusts the on-file verdict alone. lot-5 is deliberately recorded with a much thinner bond wire (:bond-wire-diameter-um 15.0 vs. the ~25um standard the other lots use) in the demo fixture (fab.store/demo-data) -- a genuine process-record inconsistency the real, re-run simulation catches."
     (let [[db actor] (fresh)
           _ (verify! actor "t13pre" "lot-5")
           res (exec-op actor "t13" {:op :actuation/dispatch-process-step :subject "lot-5"} operator)]
