@@ -57,7 +57,16 @@
   transforms (`physics-2d`'s own `world-step` is a pure fixed-timestep
   integrator, no wall-clock/IO), so this stays exactly as offline/
   deterministic as every other sibling namespace in this actor --
-  tests and the demo run without a network."
+  tests and the demo run without a network.
+
+  ADR-2607992500 EXTENDS this vertical with `fab.cad`/`fab.scene`/
+  `fab.motionplan` -- the BOM/motion-plan/scene bridge this ns's own
+  docstring used to disclose as absent (ADR-2607152000's then-narrower
+  scope). `design-for` below now threads through the SAME optional
+  `:specimen-*-mm` fields `fab.cad`/`fab.simphysics` read, so this
+  ns's own telemetry path stays consistent with what `fab.scene`/
+  `fab.motionplan` (which read a lot's `:specimen-*-mm` fields
+  directly, not through `design-for`) would derive for the same lot."
   (:require [kotoba.robotics :as robotics]
             [fab.simphysics :as simphysics]))
 
@@ -75,18 +84,21 @@
 
 (defn design-for
   "The `fab.simphysics` design-record inputs a governed lot's own
-  permanent, recorded `:bond-wire-diameter-um` field maps to -- exactly
-  the field `fab.simphysics/simulate` actually reads. Pure: a plain
-  select, no derived/ephemeral inputs needed (unlike automotive's
-  `design-for`, this vertical has no BOM/motion-plan/scene bridge --
-  ADR-2607152000's explicitly narrower scope for this fleet
-  extension)."
+  permanent, recorded fields map to -- exactly the fields
+  `fab.simphysics/simulate` actually reads: `:bond-wire-diameter-um`
+  (mass-scaling), plus (ADR-2607992500) the optional
+  `:specimen-length-mm`/`:specimen-width-mm`/`:specimen-height-mm`
+  CAD-envelope triple `fab.cad/envelope-dims-mm` reads when a lot
+  carries a real test-specimen measurement on file. Pure: a plain
+  select, no derived/ephemeral inputs needed."
   [lot]
-  (select-keys lot [:bond-wire-diameter-um]))
+  (select-keys lot [:bond-wire-diameter-um
+                     :specimen-length-mm :specimen-width-mm :specimen-height-mm]))
 
 (defn bond-pull-telemetry-for
   "Runs the REAL `fab.simphysics` time-stepped `physics-2d` simulation
-  for `lot`'s own recorded `:bond-wire-diameter-um` (`design-for`
+  for `lot`'s own recorded `:bond-wire-diameter-um` and (ADR-2607992500,
+  when present) `:specimen-*-mm` CAD-envelope fields (`design-for`
   above) and returns the actual simulated trajectory telemetry:
   `{:bond-pull-strength-actual n :sim-bond-pull-force-gf n
   :sim-peak-decel-mps2 n :ticks n :dt n :pull-rate-mps n}`.
@@ -95,8 +107,12 @@
   derived from the actual simulated velocity/position trajectory, not
   invented -- mapped onto this actor's own pre-existing field name so
   `bond-pull-strength-out-of-range?` below needs no changes at all.
-  Pure, deterministic -- no IO; the same `bond-wire-diameter-um`
-  always reproduces the same telemetry."
+  Per `fab.simphysics/simulate`'s own disclosed GEOMETRY-INVARIANCE,
+  this telemetry (unlike `fab.scene`'s render bridge) is numerically
+  IDENTICAL whether or not `lot` carries real `:specimen-*-mm` fields
+  -- the CAD envelope only ever changes `:anchor`'s AABB size, never
+  this reading. Pure, deterministic -- no IO; the same lot fields
+  always reproduce the same telemetry."
   [lot]
   (let [design (design-for lot)
         sim (simphysics/simulate design)]
