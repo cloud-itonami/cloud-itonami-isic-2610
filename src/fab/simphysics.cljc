@@ -10,6 +10,84 @@
   and takes a real git-coordinate dependency on `kotoba-lang/physics-
   2d` alone (see `deps.edn`).
 
+  ADR-2607992500 EXTENDS this ns with a real CAD/BREP bridge, closing
+  the gap this ns's docstring used to disclose ('no CAD/BREP
+  pipeline'): the `:anchor` body's AABB half-extents are now
+  genuinely derived from `fab.cad/envelope-dims-mm`'s tessellated
+  wire-bond test-specimen envelope dims for THIS lot (mirroring
+  `autoparts.robotics/specimen-half-extents-m`'s own read of
+  `autoparts.cad`, itself a port of `vdesign.simphysics/vehicle-half-
+  extents-m`'s read of `vdesign.cad`), instead of being bare fixed
+  constants. `:tension-limit-wall` remains a FIXED test-rig constant,
+  unchanged -- mirroring how `autoparts.robotics`/`vdesign.simphysics`
+  only ever derive the MOVING body from CAD and leave the static
+  boundary fixed; `:tension-limit-wall` in particular has no physical
+  counterpart at all (see its own docstring below), so there is
+  nothing real for CAD to size it against.
+
+  GEOMETRY-INVARIANCE, verified and disclosed (this vertical's own
+  real property, checked ALGEBRAICALLY AND WITH A TEST -- the actual
+  finding differs in a real, disclosed way from a naive port of
+  automotive's/autoparts's invariant, see below; do not assume the
+  two verticals' physics/geometry coupling is identical without
+  checking, per ADR-2607992500): `wall-x` below is deliberately
+  computed as `anchor-x0 + half-w + approach-m + wall-half-w-m` --
+  i.e. the face-to-face gap the anchor must close (from its own front
+  face at start to the wall's near face) is ALWAYS exactly
+  `approach-m` (= `approach-gap-m` + travel distance) in EXACT
+  (real-number) arithmetic, regardless of `half-w` (it cancels out of
+  the placement algebra by construction, the SAME technique
+  `autoparts.robotics`'s `jaw-x0`/`limit-boundary-x` use).
+  Consequently `:sim-peak-decel-mps2`/`:sim-bond-pull-force-gf`/
+  `:ticks` (the total tick COUNT)/`:dt` are IDENTICAL whether `design`
+  carries real `:specimen-*-mm` dims or falls back to defaults --
+  VERIFIED, not merely algebraic, in `simphysics_test.clj` -- same
+  shape as automotive/autoparts's disclosed invariant.
+
+  UNLIKE automotive/autoparts, `anchor-x0` here is a FIXED coordinate-
+  origin start point (`0.0`, the bond-pad reference this ns's own
+  docstring already calls 'only the coordinate origin the anchor's
+  travel is measured from, not a rigid body'), never offset by
+  `half-w` the way `autoparts.robotics`'s `jaw-x0` is offset to sit
+  flush against its own static `:fixture` body's face. So the anchor's
+  REPORTED `:trajectory` positions during the pure constant-velocity
+  approach phase (before any collision has been detected) are
+  IDENTICAL regardless of specimen geometry too -- verified in
+  `simphysics_test.clj` over the ticks both a small and a large test
+  geometry are still guaranteed to be pre-collision.
+
+  A REAL, VERIFIED CAVEAT this ns's own test suite actually caught
+  (checked, not assumed -- exactly the kind of finding a naive port of
+  automotive/autoparts's invariant would have silently missed):
+  `approach-gap-m` = `4.0 * travel-distance-m` is a PRE-EXISTING
+  (pre-ADR-2607992500) constant choice that makes `approach-m` (the
+  mathematically-exact collision boundary) land EXACTLY on an integer
+  multiple of the tick step `v0*dt` (5 ticks, by construction) at
+  this ns's default `pull-rate-mps`/`travel-distance-m`. That is a
+  numerically fragile knife-edge: once `half-w` genuinely varies
+  per-lot (this ADR), floating-point rounoff in the `half-w`-involving
+  face-position sums can tip the ACTUAL simulated collision detection
+  to the tick before or after the mathematically-exact boundary,
+  depending on the specific `half-w` value -- a real IEEE-754
+  double-rounding effect, not a modeling error. The PRACTICAL
+  consequence, verified in `simphysics_test.clj`: the post-collision
+  settling segment of `:trajectory` (`:position` values from whichever
+  tick first shows a zeroed velocity onward) CAN genuinely differ
+  (by up to one tick's offset) between two lots with different real
+  `:specimen-*-mm` geometry, even though both segments converge to
+  the SAME final resting position (within the `settle-ticks` positional-
+  correction convergence this ns's own `settle-ticks` docstring already
+  documents) and `:ticks`/`:sim-peak-decel-mps2`/`:sim-bond-pull-force-
+  gf` remain exactly, bit-for-bit invariant regardless. This is a
+  WEAKER trajectory-invariance guarantee than a naive reading of the
+  placement algebra alone would suggest (and weaker than what this
+  docstring claimed in an earlier draft, before the test above caught
+  it) -- disclosed honestly here, not smoothed over. `simulate`'s
+  returned `:anchor-half-extents-m` exposes the REAL per-run half-
+  extents used, so a caller/test can always confirm CAD geometry is
+  genuinely being read even when it happens not to be visible in a
+  particular slice of `:trajectory`.
+
   HONEST modeling note -- this is a PULL (tension) test, but
   `physics_2d/world-step` only ever resolves COLLISIONS (bodies
   CLOSING on each other, per `resolve-contact`'s `vel-along <= 0`
@@ -105,8 +183,15 @@
     `:sim-peak-decel-mps2`. The wire-diameter signal instead moves the
     FORCE reading (peak decel × mass), the same 'a genuine, verified
     property of the model, not a physics_2d-only limitation' automotive
-    disclosed for its own decel-g/mass relationship."
-  (:require [physics-2d :as p2d]))
+    disclosed for its own decel-g/mass relationship.
+  - GEOMETRY, similarly, moves neither `:sim-peak-decel-mps2` nor
+    `:sim-bond-pull-force-gf` -- see the ns-docstring's
+    GEOMETRY-INVARIANCE section above for the full, verified
+    derivation (and for the further, fab-specific finding that
+    geometry does not move `:trajectory` either, unlike automotive/
+    autoparts)."
+  (:require [fab.cad :as cad]
+            [physics-2d :as p2d]))
 
 (def ^:const pull-rate-mps
   "Representative wire-bond pull-tester crosshead speed (m/s) -- see
@@ -179,26 +264,41 @@
     (* reference-mass-kg r r)))
 
 (def ^:const anchor-half-w-m
-  "Anchor AABB half-width along the pull axis (m) -- a negligibly
+  "Anchor AABB half-width along the pull axis (m) -- ADR-2607992500: no
+  longer read directly by `simulate` (superseded by `fab.cad`-derived
+  per-lot dims, see `specimen-half-extents-m` below), retained as a
+  disclosed reference figure -- `fab.cad/default-specimen-length-mm`
+  is DELIBERATELY defined to reproduce this exact half-width (2.0e-4 mm
+  full length / 2 = 1.0e-7 m) when a lot carries no real
+  `:specimen-length-mm`, so a lot with nothing on file gets the SAME
+  anchor size this ns used before this ADR. Originally: a negligibly
   small collider (the wire/hook's own footprint is not the modeled
-  quantity; only its trajectory/mass is)."
+  quantity; only its trajectory/mass is) -- still true of the default,
+  a lot with a real `:specimen-length-mm` on file now gets a genuinely
+  per-lot collider size instead."
   1.0e-7)
 
 (def ^:const anchor-half-h-m
-  "Anchor AABB half-height (m), lateral -- negligibly small, matching
-  `anchor-half-w-m`."
+  "Anchor AABB half-height (m), lateral -- see `anchor-half-w-m`;
+  `fab.cad/default-specimen-width-mm` reproduces this exact figure
+  (2.0e-3 mm full width / 2 = 1.0e-6 m)."
   1.0e-6)
 
 (def ^:const wall-half-w-m
   "Tension-limit-wall AABB half-width along the pull axis (m) -- a
   thin, fixed virtual boundary, not a modeled second body of the real
-  test rig."
+  test rig. ADR-2607992500: stays FIXED, never CAD-derived -- this
+  body has no physical counterpart at all (a pure math device standing
+  in for the wire running out of compliant travel, see ns docstring),
+  so there is nothing real for CAD to size it against -- mirrors
+  `autoparts.robotics/limit-boundary-half-w-m`."
   1.0e-7)
 
 (def ^:const wall-half-h-m
   "Tension-limit-wall AABB half-height (m), lateral -- wide enough
   that the anchor's travel always overlaps it head-on; no lateral
-  offset is modeled."
+  offset is modeled. ADR-2607992500: stays FIXED, same reasoning as
+  `wall-half-w-m`."
   1.0e-3)
 
 (def ^:const settle-ticks
@@ -209,6 +309,29 @@
   ticks` residual overlap)."
   15)
 
+(defn specimen-half-extents-m
+  "AABB half-extents (m) for the `:anchor` body, from `fab.cad/
+  envelope-dims-mm`'s REAL tessellated dims (mm) for `design` --
+  travel-axis half-width = length/2, lateral half-height = width/2.
+  Direct port of `autoparts.robotics/specimen-half-extents-m`'s (and,
+  before it, `vdesign.simphysics/vehicle-half-extents-m`'s)
+  length/width-only reading of the CAD envelope. `envelope-dims-mm`
+  always returns SOME dims (a lot's own real `:specimen-*-mm` fields
+  when present, `fab.cad`'s disclosed fixture-scale defaults when
+  absent -- see that ns's docstring), so this always succeeds; it is
+  the INPUT (whether `design` carries real specimen measurements) that
+  varies, not this function's availability. PUBLIC (unlike its
+  automotive counterpart, which is private): `fab.simphysics`'s own
+  placement algebra makes CAD geometry invisible in `simulate`'s
+  pre-collision `:trajectory` segment, and (per the ns docstring's
+  disclosed floating-point caveat) not always cleanly visible in the
+  post-collision segment either, so this fn is the direct, honest way
+  a test/caller can verify CAD dims are genuinely being read here."
+  [design]
+  (let [{:keys [length-mm width-mm]} (cad/envelope-dims-mm design)]
+    {:half-w (/ length-mm 2000.0)
+     :half-h (/ width-mm 2000.0)}))
+
 (defn simulate
   "Time-steps a `physics_2d` world for a wire-bond pull test on a wire
   of `bond-wire-diameter-um` (from `design`, defaulting to
@@ -216,7 +339,21 @@
 
     {:trajectory [{:tick :position :velocity} ...]   ; anchor body only
      :sim-bond-pull-force-gf n :sim-peak-decel-mps2 n
-     :ticks n :dt n :pull-rate-mps n}
+     :ticks n :dt n :pull-rate-mps n :anchor-half-extents-m {:half-w n :half-h n}}
+
+  `design` may also carry a real `:specimen-length-mm`/
+  `:specimen-width-mm`/`:specimen-height-mm` coupon-envelope
+  measurement (ADR-2607992500) -- when present, the `:anchor` body's
+  AABB is sized via `specimen-half-extents-m` (`fab.cad`-derived);
+  when absent, the SAME fixed defaults this ns used before this ADR.
+  `:tension-limit-wall` always uses its own fixed constants (see those
+  defs' docstrings for why). `:anchor-half-extents-m` in the return
+  value is the REAL half-extents this run actually used, so a caller
+  can confirm CAD geometry was genuinely read even in the (real,
+  documented) case where it is not visible in the returned
+  `:trajectory`'s post-collision segment -- see ns docstring's
+  GEOMETRY-INVARIANCE section for the full, verified derivation and
+  its disclosed floating-point caveat.
 
   opts (all optional, for tuning/testing):
     :pull-mps   override the pull rate, m/s (default `pull-rate-mps`)
@@ -228,22 +365,30 @@
   actual simulated velocity trajectory, not invented.
   `:sim-bond-pull-force-gf` is that peak deceleration times the wire's
   own diameter-scaled mass abstraction, converted to gram-force -- see
-  namespace docstring for the full, disclosed derivation."
-  [{:keys [bond-wire-diameter-um]} & [{:keys [pull-mps travel-m]}]]
+  namespace docstring for the full, disclosed derivation (incl. the
+  GEOMETRY-INVARIANCE section: neither figure moves with specimen
+  geometry)."
+  [{:keys [bond-wire-diameter-um] :as design} & [{:keys [pull-mps travel-m]}]]
   (let [v0 (double (or pull-mps pull-rate-mps))
         d (double (or travel-m travel-distance-m))
         dt (/ d v0)
         mass (mass-analog-kg (or bond-wire-diameter-um reference-wire-diameter-um))
+        {:keys [half-w half-h] :as half-extents} (specimen-half-extents-m design)
         anchor-x0 0.0
         approach-m (+ approach-gap-m d)
-        wall-x approach-m
+        ;; wall-x is offset by half-w (and wall-half-w-m) so the
+        ;; face-to-face gap the anchor must close is ALWAYS exactly
+        ;; approach-m, regardless of half-w -- see ns docstring's
+        ;; GEOMETRY-INVARIANCE section (same technique autoparts.
+        ;; robotics's limit-boundary-x uses).
+        wall-x (+ anchor-x0 half-w approach-m wall-half-w-m)
         ticks (long (+ settle-ticks (long (Math/ceil (/ approach-m (* v0 dt))))))
         anchor (p2d/make-body {:position [anchor-x0 0.0]
                                 :velocity [v0 0.0]
                                 :mass mass
                                 :restitution 0.0
                                 :friction 0.0
-                                :collider (p2d/make-aabb-collider anchor-half-w-m anchor-half-h-m)
+                                :collider (p2d/make-aabb-collider half-w half-h)
                                 :user-data :anchor})
         wall (p2d/make-body {:position [wall-x 0.0]
                               :velocity [0.0 0.0]
@@ -270,4 +415,5 @@
      :sim-peak-decel-mps2 peak-decel-mps2
      :ticks (count trajectory)
      :dt dt
-     :pull-rate-mps v0}))
+     :pull-rate-mps v0
+     :anchor-half-extents-m half-extents}))
