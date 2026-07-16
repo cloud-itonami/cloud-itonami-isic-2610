@@ -40,7 +40,28 @@
         ;; vdesign.scene/autoparts.scene document).
         io.github.kotoba-lang/org-iso-10303
         {:git/url "https://github.com/kotoba-lang/org-iso-10303.git"
-         :sha "a1de3b075bcdcfbfb75c781eb88e3d07195831cf"}}
+         :sha "a1de3b075bcdcfbfb75c781eb88e3d07195831cf"}
+        ;; Cross-actor supply-chain-linkage contract (ADR-2607999950,
+        ;; extended by ADR-2607999960/ADR-2607999970, direct-ported to
+        ;; the smartphone chain by ADR-2607999980): `fab.export/
+        ;; pedigree-for-lot` packages a `kotoba.pedigree` record from
+        ;; a lot's own real, already-simulated `fab.robotics` wire-
+        ;; bond pull-test telemetry, and `fab.governor` independently
+        ;; re-verifies an OPTIONAL `:upstream-ore-pedigree` (a
+        ;; `cloud-itonami-isic-0729` non-ferrous-ore production-record
+        ;; pedigree), embedding it via `:pedigree/upstream` when
+        ;; present -- so a downstream actor (`cloud-itonami-isic-2630`)
+        ;; can independently re-verify the claim as plain EDN data --
+        ;; never a live network call between actors. Pinned to the
+        ;; SAME SHA every other cloud-itonami-isic-* actor in this
+        ;; fleet already pins (the SHA that added `:pedigree/upstream`
+        ;; chaining support). A real pinned git-coordinate dep (not
+        ;; :local/root), same reasoning physics-2d/org-iso-10303 above
+        ;; already establish, so this repo stays forkable standalone
+        ;; outside the monorepo.
+        io.github.kotoba-lang/pedigree
+        {:git/url "https://github.com/kotoba-lang/pedigree.git"
+         :sha "f85784211422a651fea26f448f601abfba2e7d61"}}
  :aliases
  {;; offline workspace dev -- pin transitive langchain-clj to local checkout
   :dev {:override-deps
@@ -53,8 +74,33 @@
                       {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
          :main-opts ["-m" "cognitect.test-runner"]
          :exec-fn cognitect.test-runner.api/test}
+  ;; ADR-2607999980's critical end-to-end proof: a GENUINE cross-repo
+  ;; call into cloud-itonami-isic-0729's own `nonferrousops.export`/
+  ;; `nonferrousops.store` (a real production record, actually written
+  ;; and read back through that repo's OWN store, -> a real kotoba.
+  ;; pedigree record), fed as plain EDN into this actor's governor.
+  ;; Kept out of the default :test alias (and its own test-cross-
+  ;; repo/ source root) so plain `clojure -M:dev:test` never REQUIRES
+  ;; a same-org sibling checkout that a casual fork of just this repo
+  ;; would not have -- the same workspace-sibling :local/root
+  ;; convention `io.github.kotoba-lang/robotics` above already uses,
+  ;; one org level up instead of across orgs (the same convention
+  ;; `steelworks`'s own `:cross-repo-test` alias already established
+  ;; for its own isic-0710 dependency, one link earlier in the
+  ;; automotive chain this repo direct-ports). Still no live network
+  ;; call at runtime: this is a build-time classpath dependency
+  ;; exercised by tests, the same category as every other :local/root
+  ;; dep in this fleet.
+  :cross-repo-test
+  {:extra-paths ["test-cross-repo"]
+   :extra-deps {io.github.cognitect-labs/test-runner
+                {:git/tag "v0.5.1" :git/sha "dfb30dd"}
+                io.github.cloud-itonami/cloud-itonami-isic-0729
+                {:local/root "../cloud-itonami-isic-0729"}}
+   :main-opts ["-m" "cognitect.test-runner" "-d" "test-cross-repo"]
+   :exec-fn cognitect.test-runner.api/test}
   ;; static analysis -- clj-kondo from deps (no binary), errors fail CI.
   :lint {:replace-deps {clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
          :main-opts    ["-m" "clj-kondo.main"
-                        "--lint" "src" "test"
+                        "--lint" "src" "test" "test-cross-repo"
                         "--fail-level" "error"]}}}

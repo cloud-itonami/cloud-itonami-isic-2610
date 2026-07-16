@@ -10,13 +10,15 @@
   -- the fab-operator analog of `cloud-itonami-isic-6512`'s
   CasualtyGovernor.
 
-  Seven checks, in priority order, ALL HARD violations: a human
+  Eight checks, in priority order, ALL HARD violations: a human
   approver CANNOT override them (you don't get to approve your way
   past a fabricated process-safety spec-basis, incomplete evidence, a
   robot wafer-probe/wire-bond verification mission that never ran or
   that independently re-checks out-of-tolerance, an unresolved
-  process-defect flag, an insufficient yield rate, or a double
-  dispatch/finalization). The confidence/actuation gate is SOFT: it
+  process-defect flag, an insufficient yield rate, an upstream ore
+  pedigree whose shape or claims fail independent re-verification, or
+  a double dispatch/finalization). The confidence/actuation gate is
+  SOFT: it
   asks a human to look (low confidence / actuation), and the human may
   approve -- but see `fab.phase`: for `:stake :actuation/dispatch-
   process-step`/`:actuation/finalize-yield-audit` (a real safety-
@@ -106,7 +108,42 @@
                                        `union.governor/strike-vote-
                                        share-insufficient-violations`
                                        established the first three).
-    6. Confidence floor / actuation
+    6. Upstream ore pedigree claims
+       out of tolerance              -- ADR-2607999980's smartphone-
+                                       chain applied link of the
+                                       ADR-2607999950 cross-actor
+                                       supply-chain-linkage pattern
+                                       (direct port of ADR-2607999970's
+                                       `steelworks.governor` equivalent
+                                       check): for `:actuation/
+                                       dispatch-process-step`, when the
+                                       lot carries an OPTIONAL
+                                       `:upstream-ore-pedigree` (a
+                                       `kotoba.pedigree` record an
+                                       upstream `cloud-itonami-
+                                       isic-0729` non-ferrous-ore
+                                       production record issued via
+                                       `nonferrousops.export/pedigree-
+                                       for-production-record`),
+                                       INDEPENDENTLY re-verify it --
+                                       never trust the upstream
+                                       actor's claim at face value:
+                                       (a) `kotoba.pedigree/valid?`
+                                       on its own shape, and (b) its
+                                       `:grade-actual` claim actually
+                                       clears THIS actor's own
+                                       disclosed acceptance floor for
+                                       upstream non-ferrous-ore
+                                       feedstock (`min-upstream-ore-
+                                       grade-pct`, below). When
+                                       `:upstream-ore-pedigree` is
+                                       ABSENT this check is a NO-OP --
+                                       existing proposals with no
+                                       upstream linkage continue to
+                                       dispatch exactly as before this
+                                       ADR (additive, never a breaking
+                                       change).
+    7. Confidence floor / actuation
        gate                          -- LLM confidence below threshold,
                                        OR the op is `:actuation/
                                        dispatch-process-step`/
@@ -127,9 +164,45 @@
   (:require [fab.facts :as facts]
             [fab.registry :as registry]
             [fab.robotics :as robotics]
-            [fab.store :as store]))
+            [fab.store :as store]
+            [kotoba.pedigree :as pedigree]))
 
 (def confidence-floor 0.6)
+
+(def ^:const min-upstream-ore-grade-pct
+  "Real, disclosed minimum acceptable upstream non-ferrous-ore
+  feedstock grade (percent commodity content -- a `kotoba.pedigree`
+  `:grade-actual` claim from a `cloud-itonami-isic-0729`-issued
+  pedigree, ADR-2607999980) this actor requires before accepting an
+  incoming ore production record as suitable feedstock ancestry for a
+  fab lot.
+
+  `nonferrousops.export`'s own docstring discloses that
+  `:grade-actual` is reported EXACTLY as recorded, with no cross-
+  commodity normalization -- `nonferrousops.facts/commodities`
+  covers five structurally different commodities (copper, lithium,
+  nickel, cobalt, rare-earth) whose grade-reporting conventions are
+  not directly comparable. This floor is calibrated for COPPER
+  specifically -- `nonferrousops.sim`'s own demo defaults to a
+  `:copper` commodity, and refined copper is this fab's own
+  practically relevant non-ferrous-ore-derived input (bonding-wire/
+  interconnect metallization) -- so this check is only a meaningful
+  acceptance gate when the upstream pedigree's evidence-basis in fact
+  names copper; this ns does not itself parse the evidence-basis
+  string to enforce that, mirroring how `kotoba.pedigree` itself
+  makes no claim about what a claim key means (see that ns's own
+  docstring).
+
+  Set at a commonly-cited copper-concentrate smelter-feed floor:
+  flotation-processed copper concentrate commonly runs in the
+  20%-30% Cu range, and roughly 20% Cu is a commonly-cited practical
+  minimum smelter-acceptable concentrate grade (below which
+  processing/freight economics become marginal) -- a commonly-cited
+  generic threshold, not a literal transcription of one specific
+  named standard's number, the SAME disclosed-prior-allowance style
+  `steelworks.governor/min-upstream-ore-grade-pct` already uses for
+  ITS OWN cross-actor acceptance floor in the automotive chain."
+  20.0)
 
 (def high-stakes
   "Stakes grave enough to always require a human, even when clean.
@@ -226,6 +299,47 @@
           :detail (str subject " の歩留まり(" (:good-dies l) "/" (:total-dies l)
                       ")が必要基準(" (:required-yield-share l) ")を下回る")}]))))
 
+(defn- upstream-ore-pedigree-claims-out-of-tolerance-violations
+  "ADR-2607999980's smartphone-chain applied link of the
+  ADR-2607999950 cross-actor supply-chain-linkage pattern (direct
+  port of ADR-2607999970's `steelworks.governor/upstream-ore-
+  pedigree-claims-out-of-tolerance-violations`). For `:actuation/
+  dispatch-process-step`: when the lot carries an OPTIONAL
+  `:upstream-ore-pedigree` (a `kotoba.pedigree` record an upstream
+  `cloud-itonami-isic-0729` non-ferrous-ore production record issued
+  via `nonferrousops.export/pedigree-for-production-record` and a
+  test/demo/orchestration script attached to this lot as plain EDN
+  data -- never a live network call), INDEPENDENTLY re-verify it,
+  never trusting the upstream actor's claim at face value: (a) the
+  pedigree's own shape (`kotoba.pedigree/valid?`) -- a malformed/
+  incomplete pedigree is never accepted, and (b) its `:grade-actual`
+  claim actually clears THIS actor's own disclosed acceptance floor
+  for upstream non-ferrous-ore feedstock (`min-upstream-ore-grade-
+  pct`) -- the SAME 'ground truth, not self-report' discipline
+  `robotics-simulation-violations`/`yield-rate-insufficient-
+  violations` above already apply WITHIN this actor, now extended
+  ACROSS actors.
+
+  When `:upstream-ore-pedigree` is ABSENT this check is a NO-OP --
+  existing proposals with no upstream linkage continue to dispatch
+  exactly as before this ADR (additive, never a breaking change)."
+  [{:keys [op subject]} st]
+  (when (= op :actuation/dispatch-process-step)
+    (let [l (store/lot st subject)
+          p (:upstream-ore-pedigree l)]
+      (when (some? p)
+        (cond
+          (not (pedigree/valid? p))
+          [{:rule :upstream-ore-pedigree-invalid-shape
+            :detail (str subject " のupstream ore pedigreeがkotoba.pedigreeの形状検証に失敗")}]
+
+          (let [v (pedigree/claim-value p :grade-actual)]
+            (or (not (number? v)) (< v min-upstream-ore-grade-pct)))
+          [{:rule :upstream-ore-pedigree-claims-out-of-tolerance
+            :detail (str subject " のupstream ore pedigree(" (:pedigree/id p)
+                        ")の鉱石品位(" (pedigree/claim-value p :grade-actual)
+                        "%)が受入基準(" min-upstream-ore-grade-pct "%)を下回る")}])))))
+
 (defn- already-dispatched-violations
   "For `:actuation/dispatch-process-step`, refuses to dispatch a
   process step for the SAME lot twice, off a dedicated `:process-
@@ -257,6 +371,7 @@
                            (robotics-simulation-violations request st)
                            (process-defect-flag-unresolved-violations request proposal st)
                            (yield-rate-insufficient-violations request st)
+                           (upstream-ore-pedigree-claims-out-of-tolerance-violations request st)
                            (already-dispatched-violations request st)
                            (already-audited-violations request st)))
         conf (:confidence proposal 0.0)
