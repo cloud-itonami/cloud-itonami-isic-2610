@@ -31,7 +31,20 @@
   jurisdictional basis, approved by whom' is always a query over an
   immutable log -- the audit trail a fab operator needs, and the
   evidence needed if a dispatch or yield-audit decision is later
-  disputed."
+  disputed.
+
+  `:upstream-ore-pedigree` (ADR-2607999980, direct port of
+  ADR-2607999970's smartphone-chain equivalent) is an OPTIONAL lot
+  field -- a `kotoba.pedigree` record an upstream `cloud-itonami-
+  isic-0729` non-ferrous-ore production record issued via
+  `nonferrousops.export/pedigree-for-production-record`, attached via
+  the SAME general-purpose `:lot/intake`+`:patch` mechanism every
+  other lot field already uses (no new op/effect needed) -- the same
+  convention `steelworks.store`'s own `:upstream-ore-pedigree` field
+  already established one link earlier in this fleet's pattern.
+  Absent on every lot that predates this ADR; `fab.governor`'s new
+  check treats its absence as a no-op, so this is purely additive on
+  both backends."
   (:require #?(:clj  [clojure.edn :as edn]
                :cljs [cljs.reader :as edn])
             [fab.registry :as registry]
@@ -238,6 +251,7 @@
                         bond-wire-diameter-um
                         bond-pull-strength-actual bond-pull-strength-min bond-pull-strength-max
                         process-defect-flag-unresolved? robotics-sim-verified? robotics-sim-record
+                        upstream-ore-pedigree
                         process-step-dispatched? yield-audit-finalized?
                         jurisdiction status dispatch-number audit-number]}]
   (cond-> {:lot/id id}
@@ -252,6 +266,7 @@
     (some? process-defect-flag-unresolved?)  (assoc :lot/process-defect-flag-unresolved? process-defect-flag-unresolved?)
     (some? robotics-sim-verified?)            (assoc :lot/robotics-sim-verified? robotics-sim-verified?)
     (some? robotics-sim-record)               (assoc :lot/robotics-sim-record (enc robotics-sim-record))
+    (some? upstream-ore-pedigree)              (assoc :lot/upstream-ore-pedigree (enc upstream-ore-pedigree))
     (some? process-step-dispatched?)         (assoc :lot/process-step-dispatched? process-step-dispatched?)
     (some? yield-audit-finalized?)           (assoc :lot/yield-audit-finalized? yield-audit-finalized?)
     jurisdiction                              (assoc :lot/jurisdiction jurisdiction)
@@ -264,6 +279,7 @@
    :lot/bond-wire-diameter-um
    :lot/bond-pull-strength-actual :lot/bond-pull-strength-min :lot/bond-pull-strength-max
    :lot/process-defect-flag-unresolved? :lot/robotics-sim-verified? :lot/robotics-sim-record
+   :lot/upstream-ore-pedigree
    :lot/process-step-dispatched? :lot/yield-audit-finalized?
    :lot/jurisdiction :lot/status :lot/dispatch-number :lot/audit-number])
 
@@ -280,6 +296,7 @@
      :process-defect-flag-unresolved? (boolean (:lot/process-defect-flag-unresolved? m))
      :robotics-sim-verified? (boolean (:lot/robotics-sim-verified? m))
      :robotics-sim-record (dec* (:lot/robotics-sim-record m))
+     :upstream-ore-pedigree (dec* (:lot/upstream-ore-pedigree m))
      :process-step-dispatched? (boolean (:lot/process-step-dispatched? m))
      :yield-audit-finalized? (boolean (:lot/yield-audit-finalized? m))
      :jurisdiction (:lot/jurisdiction m) :status (:lot/status m)
