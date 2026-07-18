@@ -196,3 +196,39 @@
       (exec-op actor "b" {:op :requirements/verify :subject "lot-1" :no-spec? true} operator)
       (is (= 2 (count (store/ledger db)))
           "one commit + one hold, both recorded"))))
+
+;; ───────────── Additive: :handoff on :actuation/finalize-yield-audit (superproject part-supplier-linkage ADR, cloud-itonami-isic-2610<->cloud-itonami-isic-2813) ─────────────
+;;
+;; isic-2610's FINALIZATION side of the superproject `:handoff` shared
+;; shape (ADR-2607177600, reused as-is) -- `:handoff` is entirely
+;; OPTIONAL on `:actuation/finalize-yield-audit` (every existing test
+;; above that never sets it is unaffected); a `:handoff` that IS
+;; present but missing its own required identity fields HARD-holds.
+
+(deftest finalize-yield-audit-with-complete-handoff-clean-escalates-then-links-the-consumer
+  (testing "a clean, fully-verified, sufficient-yield lot finalized WITH a complete :handoff still always escalates (finalization is never auto), and the handoff carries through to the SSoT on approval"
+    (let [[db actor] (fresh)
+          _ (verify! actor "t14pre" "lot-1")
+          _ (screen! actor "t14pre2" "lot-1")
+          handoff {:handoff/id "ho-3" :handoff/source-actor "cloud-itonami-isic-2610"
+                   :handoff/batch-id "JPN-YLD-000000" :handoff/product-type-id "part:control-panel"
+                   :handoff/dispatched-at-iso "2026-07-18T00:00:00Z"}
+          r1 (exec-op actor "t14" {:op :actuation/finalize-yield-audit :subject "lot-1" :handoff handoff} operator)]
+      (is (= :interrupted (:status r1)) "pauses for human approval even with a clean :handoff")
+      (let [r2 (approve! actor "t14")
+            l (store/lot db "lot-1")]
+        (is (= :commit (get-in r2 [:state :disposition])))
+        (is (true? (:yield-audit-finalized? l)))
+        (is (= "cloud-itonami-isic-2610" (:handoff/source-actor (:handoff l))))
+        (is (= "JPN-YLD-000000" (:handoff/batch-id (:handoff l))))))))
+
+(deftest finalize-yield-audit-with-incomplete-handoff-is-held
+  (testing "a :handoff that IS present but missing its own required identity fields -> HOLD, even though :handoff itself is optional"
+    (let [[db actor] (fresh)
+          _ (verify! actor "t15pre" "lot-1")
+          _ (screen! actor "t15pre2" "lot-1")
+          res (exec-op actor "t15" {:op :actuation/finalize-yield-audit :subject "lot-1"
+                                    :handoff {:handoff/source-actor "cloud-itonami-isic-2610"}} operator)]
+      (is (= :hold (get-in res [:state :disposition])))
+      (is (some #{:handoff-incomplete} (-> (store/ledger db) last :basis)))
+      (is (false? (:yield-audit-finalized? (store/lot db "lot-1"))) "no finalization committed"))))

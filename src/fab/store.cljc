@@ -158,14 +158,18 @@
 (defn- finalize-yield-audit!
   "Backend-agnostic `:lot/mark-audited` -- looks up the lot via the
   protocol and drafts the yield-audit record, and returns {:result ..
-  :lot-patch ..} for the caller to persist."
-  [s lot-id]
+  :lot-patch ..} for the caller to persist. `handoff` (optional,
+  superproject part-supplier-linkage ADR, cloud-itonami-isic-2610<->
+  cloud-itonami-isic-2813) is merged into `:lot-patch` verbatim when
+  present -- callers that never pass it are unaffected."
+  [s lot-id & [handoff]]
   (let [l (lot s lot-id)
         seq-n (next-audit-sequence s (:jurisdiction l))
         result (registry/register-yield-audit lot-id (:jurisdiction l) seq-n)]
     {:result result
-     :lot-patch {:yield-audit-finalized? true
-                :audit-number (get result "audit_number")}}))
+     :lot-patch (cond-> {:yield-audit-finalized? true
+                         :audit-number (get result "audit_number")}
+                  handoff (assoc :handoff handoff))}))
 
 ;; ----------------------------- MemStore (default) -----------------------------
 
@@ -206,7 +210,7 @@
 
       :lot/mark-audited
       (let [lot-id (first path)
-            {:keys [result lot-patch]} (finalize-yield-audit! s lot-id)
+            {:keys [result lot-patch]} (finalize-yield-audit! s lot-id (:handoff value))
             jurisdiction (:jurisdiction (lot s lot-id))]
         (swap! a (fn [state]
                    (-> state
@@ -253,7 +257,7 @@
                         process-defect-flag-unresolved? robotics-sim-verified? robotics-sim-record
                         upstream-ore-pedigree
                         process-step-dispatched? yield-audit-finalized?
-                        jurisdiction status dispatch-number audit-number]}]
+                        jurisdiction status dispatch-number audit-number handoff]}]
   (cond-> {:lot/id id}
     lot-name                                 (assoc :lot/lot-name lot-name)
     good-dies                                (assoc :lot/good-dies good-dies)
@@ -272,14 +276,17 @@
     jurisdiction                              (assoc :lot/jurisdiction jurisdiction)
     status                                    (assoc :lot/status status)
     dispatch-number                           (assoc :lot/dispatch-number dispatch-number)
-    audit-number                              (assoc :lot/audit-number audit-number)))
+    audit-number                              (assoc :lot/audit-number audit-number)
+    ;; additive (part-supplier-linkage ADR, isic-2610<->isic-2813): a nested
+    ;; map, EDN-string-encoded like `:lot/upstream-ore-pedigree` above.
+    handoff                                    (assoc :lot/handoff (enc handoff))))
 
 (def ^:private lot-pull
   [:lot/id :lot/lot-name :lot/good-dies :lot/total-dies :lot/required-yield-share
    :lot/bond-wire-diameter-um
    :lot/bond-pull-strength-actual :lot/bond-pull-strength-min :lot/bond-pull-strength-max
    :lot/process-defect-flag-unresolved? :lot/robotics-sim-verified? :lot/robotics-sim-record
-   :lot/upstream-ore-pedigree
+   :lot/upstream-ore-pedigree :lot/handoff
    :lot/process-step-dispatched? :lot/yield-audit-finalized?
    :lot/jurisdiction :lot/status :lot/dispatch-number :lot/audit-number])
 
@@ -297,6 +304,7 @@
      :robotics-sim-verified? (boolean (:lot/robotics-sim-verified? m))
      :robotics-sim-record (dec* (:lot/robotics-sim-record m))
      :upstream-ore-pedigree (dec* (:lot/upstream-ore-pedigree m))
+     :handoff (dec* (:lot/handoff m))
      :process-step-dispatched? (boolean (:lot/process-step-dispatched? m))
      :yield-audit-finalized? (boolean (:lot/yield-audit-finalized? m))
      :jurisdiction (:lot/jurisdiction m) :status (:lot/status m)
@@ -368,7 +376,7 @@
 
       :lot/mark-audited
       (let [lot-id (first path)
-            {:keys [result lot-patch]} (finalize-yield-audit! s lot-id)
+            {:keys [result lot-patch]} (finalize-yield-audit! s lot-id (:handoff value))
             jurisdiction (:jurisdiction (lot s lot-id))
             next-n (inc (next-audit-sequence s jurisdiction))]
         (d/transact! conn
