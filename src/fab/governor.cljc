@@ -160,7 +160,30 @@
   facts (never a `:status` value) -- the SAME 'check a dedicated
   boolean, not status' discipline every prior sibling governor's
   guards establish, informed by `cloud-itonami-isic-6492`'s status-
-  lifecycle bug (ADR-2607071320)."
+  lifecycle bug (ADR-2607071320).
+
+  Addendum (superproject part-supplier-linkage ADR, cloud-itonami-
+  isic-2610<->cloud-itonami-isic-2813): a NINTH HARD check,
+  `handoff-incomplete-violations`, was added alongside an OPTIONAL
+  `:handoff` field on `:actuation/finalize-yield-audit` (the
+  superproject `:handoff` shared shape, ADR-2607177600, reused as-is
+  -- no new shape; `register-yield-audit`'s own docstring already
+  says a finalized yield audit is 'ahead of shipment/certification',
+  making this the natural dispatch-like attachment point in this
+  actor, DISTINCT from `:actuation/dispatch-process-step`, which is
+  an INTERNAL cleanroom robot action, never an outbound handoff, and
+  also DISTINCT from `:upstream-ore-pedigree` above: that names an
+  UPSTREAM feedstock claim this actor independently re-verifies
+  before accepting, `:handoff` names a DOWNSTREAM consumer this
+  actor's own finalized lot is destined for). `:handoff` names which
+  downstream consumer (e.g. cloud-itonami-isic-2813, sourcing
+  `part:control-panel` electronic components) the finalized lot is
+  destined for; unlike isic-1075's own `:coordinate-shipment` (which
+  made `:handoff` MANDATORY), this actor's `:handoff` stays OPTIONAL
+  -- a finalization with NO `:handoff` at all is NOT a violation, but
+  a `:handoff` that IS present and missing any of its own three
+  identity/correlation fields (`registry/handoff-fields-present?`)
+  HARD-holds."
   (:require [fab.facts :as facts]
             [fab.registry :as registry]
             [fab.robotics :as robotics]
@@ -360,10 +383,38 @@
       [{:rule :already-audited
         :detail (str subject " は既に歩留まり監査確定済み")}])))
 
+(defn- handoff-incomplete-violations
+  "For `:actuation/finalize-yield-audit`, `:handoff` (the superproject
+  `:handoff` shared shape, ADR-2607177600, reused as-is) is entirely
+  OPTIONAL -- a finalization with NO `:handoff` at all is NOT a
+  violation (this fab ships lots to any customer, tracked or not, the
+  same 'optional field absent -> not checked' discipline
+  cloud-itonami-isic-2710's own `:coordinate-shipment`-`:handoff`
+  extension uses). But a `:handoff` that IS present and missing any of
+  its own three identity/correlation fields
+  (`registry/handoff-fields-present?`) is a fabricated/incomplete
+  reference -- HARD hold, the same anti-fabrication discipline
+  `upstream-ore-pedigree-claims-out-of-tolerance-violations` above
+  applies to an upstream pedigree reference, applied here to a
+  downstream handoff reference."
+  [{:keys [op]} proposal]
+  (when (= op :actuation/finalize-yield-audit)
+    (when-let [handoff (:handoff (:value proposal))]
+      (when-not (registry/handoff-fields-present? handoff)
+        [{:rule :handoff-incomplete
+          :detail "handoff参照が付与されているが必須フィールド(:handoff/id・:handoff/source-actor・:handoff/batch-id)が不足 -- 架空/不完全なhandoff参照では歩留まり監査を確定できない"}]))))
+
 (defn check
   "Censors a Fab Advisor proposal against the governor rules.
   Returns {:ok? bool :violations [..] :confidence c :escalate? bool
-  :high-stakes? bool :hard? bool}."
+  :high-stakes? bool :hard? bool}.
+
+  Includes `handoff-incomplete-violations` -- a NINTH hard check
+  added alongside the OPTIONAL `:handoff` field on `:actuation/
+  finalize-yield-audit` (see ns docstring Addendum), purely additive:
+  it only ever fires for `:actuation/finalize-yield-audit` proposals
+  that carry a `:handoff` map, and is a no-op for every pre-existing
+  caller that never sets `:handoff` at all."
   [request _context proposal st]
   (let [hard (into []
                    (concat (spec-basis-violations request proposal)
@@ -373,7 +424,8 @@
                            (yield-rate-insufficient-violations request st)
                            (upstream-ore-pedigree-claims-out-of-tolerance-violations request st)
                            (already-dispatched-violations request st)
-                           (already-audited-violations request st)))
+                           (already-audited-violations request st)
+                           (handoff-incomplete-violations request proposal)))
         conf (:confidence proposal 0.0)
         low? (< conf confidence-floor)
         stakes? (boolean (high-stakes (:stake proposal)))

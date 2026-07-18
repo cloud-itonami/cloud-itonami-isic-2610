@@ -175,18 +175,28 @@
   README `Actuation`: no phase ever adds this op to a phase's `:auto`
   set (`fab.phase`); the governor also always escalates on
   `:actuation/finalize-yield-audit`. Two independent layers agree,
-  deliberately."
-  [db {:keys [subject]}]
+  deliberately.
+
+  Additive (superproject part-supplier-linkage ADR, cloud-itonami-
+  isic-2610<->cloud-itonami-isic-2813): the request may OPTIONALLY
+  carry a `:handoff` (the superproject `:handoff` shared shape,
+  ADR-2607177600, reused as-is) naming the downstream consumer this
+  finalized lot is destined for ahead of shipment. The advisor only
+  echoes the caller's own `:handoff` verbatim into `:value` -- it
+  never invents one; `fab.governor` INDEPENDENTLY re-verifies its
+  required fields (when present) before anything commits."
+  [db {:keys [subject handoff]}]
   (let [l (store/lot db subject)]
     {:summary    (str subject " 向け歩留まり監査確定提案"
-                      (when l (str " (lot=" (:lot-name l) ")")))
+                      (when l (str " (lot=" (:lot-name l) ")"))
+                      (when-let [src (:handoff/source-actor handoff)] (str " supplier-of=" src)))
      :rationale  (if l
                    (str "good-dies=" (:good-dies l) " total-dies=" (:total-dies l)
                         " required-yield-share=" (:required-yield-share l))
                    "ロット記録が見つかりません")
-     :cites      (if l [subject] [])
+     :cites      (if l (cond-> [subject] (:handoff/source-actor handoff) (conj (:handoff/source-actor handoff))) [])
      :effect     :lot/mark-audited
-     :value      {:lot-id subject}
+     :value      (cond-> {:lot-id subject} handoff (assoc :handoff handoff))
      :stake      :actuation/finalize-yield-audit
      :confidence (if (and l (not (registry/yield-rate-insufficient? l))) 0.9 0.3)}))
 
