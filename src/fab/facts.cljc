@@ -13,7 +13,7 @@
   Seed values cite each jurisdiction's official chemical/process-
   safety regulator (see `:provenance`), alongside SEMI (Semiconductor
   Equipment and Materials International) international process
-  standards referenced across all four -- SEMI standards are an
+  standards referenced across every entry -- SEMI standards are an
   industry body, not a government, so they supplement rather than
   replace each jurisdiction's own binding safety law. This is a
   STARTING catalog, not a from-scratch survey of all ~194
@@ -63,7 +63,56 @@
           :required-evidence ["Prozessspezifikationsprüfnachweis (process-spec-verification-record)"
                               "EDA/CAE-Simulationsnachweis (EDA-CAE-simulation-record)"
                               "Chemikaliensicherheitsfreigabe (chemical-safety-clearance-record)"
-                              "Wafer-Los-Rückverfolgbarkeitsnachweis (wafer-lot-traceability-record)"]}})
+                              "Wafer-Los-Rückverfolgbarkeitsnachweis (wafer-lot-traceability-record)"]}
+   ;; NLD -- home to ASML (dominant lithography-equipment maker), a
+   ;; genuinely significant fab jurisdiction. Fetched wetten.overheid.nl
+   ;; directly (2026-07-22): the literal Dutch analogue of GBR's COMAH 2015
+   ;; here -- "Besluit risico's zware ongevallen 2015" (BRZO 2015,
+   ;; BWBR0036791), also implementing EU Seveso III Directive 2012/18/EU --
+   ;; was REPEALED 2024-01-01 ("Regeling vervallen per 01-01-2024") when the
+   ;; Omgevingswet took effect. Its Seveso-inrichting rules were folded into
+   ;; "Besluit activiteiten leefomgeving" (Bal, BWBR0041330): Hoofdstuk 3
+   ;; Afdeling 3.3 § 3.3.1 "Seveso-inrichting" (artikelen 3.50-3.53)
+   ;; designates operating a Seveso-inrichting as a regulated activity;
+   ;; Hoofdstuk 4 § 4.2 "Seveso-inrichting" (artikelen 4.2-4.28) sets the
+   ;; substantive rules (preventiebeleid voor zware ongevallen / major-
+   ;; accident-prevention policy art. 4.10, veiligheidsbeheerssysteem /
+   ;; safety-management-system art. 4.11, veiligheidsrapport / safety-report
+   ;; art. 4.14-4.19). Confirmed currently in force by fetching
+   ;; https://wetten.overheid.nl/BWBR0041330/2026-07-11 (the version the
+   ;; canonical no-date URL redirects to today), which reads "Geldend van
+   ;; 11-07-2026 t/m heden" (in force from 2026-07-11 to present). Bal's own
+   ;; preamble ("Origineel opschrift en aanhef") names the issuing minister
+   ;; as "Onze Minister van Infrastructuur en Milieu" (mede namens Onze
+   ;; Minister van Economische Zaken, Onze Minister van Onderwijs, Cultuur
+   ;; en Wetenschap en Onze Minister van Sociale Zaken en Werkgelegenheid),
+   ;; with the later "nader rapport" paragraph in the SAME fetched document
+   ;; using the ministry's current name, Infrastructuur en Waterstaat (IenW)
+   ;; -- hence :owner-authority below. HONEST GAP: unlike JPN/USA/GBR/DEU,
+   ;; which each have ONE named single-agency safety regulator (METI/OSHA/
+   ;; HSE/BAuA), NL's Seveso-inrichting competent-authority ("bevoegd gezag")
+   ;; is decentralized per installation (province/omgevingsdienst, assigned
+   ;; via the separate Omgevingsbesluit, which was NOT fetched this session)
+   ;; -- no single-agency name could be independently confirmed, so
+   ;; :owner-authority names the ministry Bal's own preamble actually names,
+   ;; not an invented "Dutch OSHA/HSE equivalent". Also checked (not used):
+   ;; EU Regulation (EU) 2021/821 (Dual-Use Regulation, restricting export of
+   ;; advanced lithography equipment) governs EXPORT LICENSING of fab
+   ;; equipment, a different question than this catalog's -- every sibling
+   ;; entry's :legal-basis answers "did the advisor cite an official source
+   ;; for this jurisdiction's fab PROCESS-SAFETY requirements" (see
+   ;; fab.governor's :no-spec-basis rule / fab.fabadvisor's :legal-basis
+   ;; usage) -- so an export-control citation was deliberately not
+   ;; substituted in for that field.
+   "NLD" {:name "Netherlands"
+          :owner-authority "Ministerie van Infrastructuur en Waterstaat (IenW, Ministry of Infrastructure and Water Management -- issuing ministry per Bal's own preamble) / SEMI International Standards"
+          :legal-basis "Besluit activiteiten leefomgeving (Bal) Hoofdstuk 3 Afdeling 3.3 §3.3.1 + Hoofdstuk 4 §4.2 Seveso-inrichting (artikelen 3.50-3.53, 4.2-4.28), implementing EU Seveso III Directive 2012/18/EU / SEMI International Standards"
+          :national-spec "Halfgeleiderfabricage chemicaliën- en gasomgang veiligheidseisen onder het Seveso-inrichtingenregime"
+          :provenance "https://wetten.overheid.nl/BWBR0041330"
+          :required-evidence ["Processpecificatie-verificatierecord (process-spec-verification-record)"
+                              "EDA/CAE-simulatierecord (EDA-CAE-simulation-record)"
+                              "Chemische-veiligheidsvrijgave (chemical-safety-clearance-record)"
+                              "Wafer-lot-traceerbaarheidsrecord (wafer-lot-traceability-record)"]}})
 
 (defn spec-basis
   "The jurisdiction's requirement map, or nil -- nil means NO spec-basis,

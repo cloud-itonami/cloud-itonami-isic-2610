@@ -6,14 +6,19 @@
   (is (some? (facts/spec-basis "JPN")))
   (is (string? (:provenance (facts/spec-basis "JPN")))))
 
+(deftest nld-has-a-spec-basis
+  (is (some? (facts/spec-basis "NLD")))
+  (is (string? (:provenance (facts/spec-basis "NLD"))))
+  (is (= "Netherlands" (:name (facts/spec-basis "NLD")))))
+
 (deftest unknown-jurisdiction-has-no-fabricated-spec-basis
   (is (nil? (facts/spec-basis "ATL"))))
 
 (deftest coverage-never-reports-a-missing-jurisdiction-as-covered
-  (let [report (facts/coverage ["JPN" "ATL" "GBR"])]
-    (is (= 2 (:covered report)))
+  (let [report (facts/coverage ["JPN" "ATL" "GBR" "NLD"])]
+    (is (= 3 (:covered report)))
     (is (= ["ATL"] (:missing-jurisdictions report)))
-    (is (= ["GBR" "JPN"] (:covered-jurisdictions report)))))
+    (is (= ["GBR" "JPN" "NLD"] (:covered-jurisdictions report)))))
 
 (deftest required-evidence-satisfied-needs-every-item
   (let [all (facts/evidence-checklist "JPN")]
