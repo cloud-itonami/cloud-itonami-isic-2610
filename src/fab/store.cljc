@@ -11,6 +11,11 @@
                         Datomic Local or a kotoba-server pod by swapping
                         `langchain.db`'s `:db-api` (see langchain.kotoba-db).
 
+  `DatomicStore` uses `langchain-store.core` (ADR-2607141600) for the
+  shared EDN-blob codec (`ls/enc`/`ls/dec*`) instead of hand-rolling it
+  -- the same seam `cloud-itonami-isic-3314`'s `store.cljc` already
+  establishes.
+
   Both implement the same protocol and pass the same contract
   (test/fab/store_contract_test.clj), which is the whole point: the
   actor, the Fab Operations Governor and the audit ledger never know
@@ -45,10 +50,9 @@
   Absent on every lot that predates this ADR; `fab.governor`'s new
   check treats its absence as a no-op, so this is purely additive on
   both backends."
-  (:require #?(:clj  [clojure.edn :as edn]
-               :cljs [cljs.reader :as edn])
-            [fab.registry :as registry]
+  (:require [fab.registry :as registry]
             [fab.robotics :as robotics]
+            [langchain-store.core :as ls]
             [langchain.db :as d]))
 
 (defprotocol Store
@@ -248,8 +252,8 @@
    :dispatch-sequence/jurisdiction    {:db/unique :db.unique/identity}
    :audit-sequence/jurisdiction       {:db/unique :db.unique/identity}})
 
-(defn- enc [v] (pr-str v))
-(defn- dec* [s] (when s (edn/read-string s)))
+(def ^:private enc "See langchain-store.core/enc." ls/enc)
+(def ^:private dec* "See langchain-store.core/dec*." ls/dec*)
 
 (defn- lot->tx [{:keys [id lot-name good-dies total-dies required-yield-share
                         bond-wire-diameter-um
