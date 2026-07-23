@@ -6,7 +6,10 @@ name: ci
 # Workspace layout: deps use :local/root to kotoba-lang/langgraph,
 # kotoba-lang/robotics and kotoba-lang/langchain-store (public), plus
 # kotoba-lang/langchain via the :dev alias override. CI reconstructs
-# sibling paths. `test-cross-repo` (its own alias, needing a sibling
+# sibling paths -- including kotoba-lang/html and kotoba-lang/css,
+# which kotoba-lang/robotics itself needs via ITS OWN :local/root
+# (transitive sibling, not just this repo's direct deps.edn).
+# `test-cross-repo` (its own alias, needing a sibling
 # cloud-itonami-isic-0729 checkout) is intentionally NOT run here --
 # it stays out of the default `:test`/`:dev:test` alias for the same
 # reason a casual fork of just this repo doesn't need it.
@@ -42,6 +45,14 @@ jobs:
         with:
           repository: kotoba-lang/robotics
           path: orgs/kotoba-lang/robotics
+      - uses: actions/checkout@v4
+        with:
+          repository: kotoba-lang/html
+          path: orgs/kotoba-lang/html
+      - uses: actions/checkout@v4
+        with:
+          repository: kotoba-lang/css
+          path: orgs/kotoba-lang/css
       - uses: actions/checkout@v4
         with:
           repository: kotoba-lang/langchain-store
