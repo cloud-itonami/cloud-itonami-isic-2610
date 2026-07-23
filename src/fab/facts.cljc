@@ -112,7 +112,72 @@
           :required-evidence ["Processpecificatie-verificatierecord (process-spec-verification-record)"
                               "EDA/CAE-simulatierecord (EDA-CAE-simulation-record)"
                               "Chemische-veiligheidsvrijgave (chemical-safety-clearance-record)"
-                              "Wafer-lot-traceerbaarheidsrecord (wafer-lot-traceability-record)"]}})
+                              "Wafer-lot-traceerbaarheidsrecord (wafer-lot-traceability-record)"]}
+   ;; TWN -- home to TSMC, one of the world's largest (and most
+   ;; strategically significant) semiconductor-fab jurisdictions;
+   ;; a notable prior gap in this catalog. Fetched
+   ;; https://law.moj.gov.tw/ENG/LawClass/LawAll.aspx?pcode=N0060001
+   ;; directly (2026-07-23), Taiwan's Ministry of Justice official
+   ;; English statute database entry for the "Occupational Safety and
+   ;; Health Act" (Amended Date shown on the page: 2025-12-19, i.e.
+   ;; the current, in-force text). Article 15 paragraph I reads
+   ;; verbatim: "For workplaces under any of the following specified
+   ;; circumstances, business entities shall regularly conduct process
+   ;; safety assessments, produce process safety assessment reports,
+   ;; and adopt necessary preventative measures within the deadline
+   ;; stipulated by the central competent authority; the same rule
+   ;; applies when the process is modified. 1. Petrochemical industry
+   ;; which engages in petroleum cracking. 2. Workplaces which engage
+   ;; in the manufacturing, storage, or usage of hazardous chemicals in
+   ;; excess of the quantity stipulated by the central competent
+   ;; authority." -- item 2 is the fab-relevant trigger (a
+   ;; semiconductor fab manufactures/stores/uses hazardous process
+   ;; chemicals -- arsine, phosphine, various acids/solvents -- well
+   ;; above ordinary-workplace thresholds), and this is the SAME
+   ;; process-safety-assessment-for-hazardous-chemical-facilities angle
+   ;; as USA's OSHA Process Safety Management standard entry above, not
+   ;; a different one. Cross-checked the same Article 15 text on the
+   ;; Ministry of Justice's Chinese-language page
+   ;; (https://law.moj.gov.tw/LawClass/LawAll.aspx?pcode=N0060001,
+   ;; same session) -- the Chinese "有下列情事之一之工作場所...定期實施製程安全評估"
+   ;; matches the English translation above. Article 3 paragraph I
+   ;; names the central competent authority as "the Ministry of Labor
+   ;; at the central government level"; separately confirmed by
+   ;; fetching https://www.osha.gov.tw/ (2026-07-23), whose own page
+   ;; header states its full English name verbatim as "Occupational
+   ;; Safety and Health Administration, Ministry Of Labor" (Taiwan's
+   ;; OSHA is literally named the same acronym as the USA's) --
+   ;; :owner-authority below quotes that verbatim self-identification,
+   ;; not an inferred name. HONEST GAP: Article 15 paragraph III says
+   ;; the detailed hazardous-chemical-quantity thresholds and process-
+   ;; safety-assessment-method rules are set by a subordinate
+   ;; regulation issued by the Ministry of Labor; that specific
+   ;; subordinate regulation's own pcode/title could not be located
+   ;; this session (the Ministry of Justice database's law-search page
+   ;; renders results via client-side script that a text fetch cannot
+   ;; execute), so :legal-basis below cites Article 15 of the primary
+   ;; Act itself (a genuine, independently-verified binding
+   ;; requirement) rather than the unlocated implementing rule -- the
+   ;; same category of primary-Act citation JPN's entry above already
+   ;; uses. Also checked (not used): fetching
+   ;; https://www.moenv.gov.tw/en/ (2026-07-23) confirmed Taiwan's
+   ;; Ministry of Environment (formerly EPA) administers the "Toxic and
+   ;; Concerned Chemical Substances Control Act", but that law's own
+   ;; site describes its scope as chemical-substance registration/
+   ;; declaration and environmental release control, a different
+   ;; question than this catalog's fab PROCESS-safety angle (see NLD's
+   ;; comment above for the same distinction drawn against an export-
+   ;; control law) -- so it was deliberately not substituted in for
+   ;; :legal-basis either.
+   "TWN" {:name "Taiwan"
+          :owner-authority "Occupational Safety and Health Administration (OSHA), Ministry of Labor / SEMI International Standards"
+          :legal-basis "職業安全衛生法 (Occupational Safety and Health Act) Article 15 (process safety assessment for hazardous-chemical-handling workplaces) / SEMI International Standards"
+          :national-spec "半導體晶圓廠化學品及製程安全評估要求 (Semiconductor-fab chemical/process-safety assessment requirements)"
+          :provenance "https://law.moj.gov.tw/ENG/LawClass/LawAll.aspx?pcode=N0060001"
+          :required-evidence ["製程規格驗證紀錄 (process-spec-verification-record)"
+                              "EDA/CAE模擬紀錄 (EDA-CAE-simulation-record)"
+                              "化學品安全許可紀錄 (chemical-safety-clearance-record)"
+                              "晶圓批次追溯紀錄 (wafer-lot-traceability-record)"]}})
 
 (defn spec-basis
   "The jurisdiction's requirement map, or nil -- nil means NO spec-basis,
