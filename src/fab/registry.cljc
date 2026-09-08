@@ -32,7 +32,7 @@
   (that is `fab.operation`'s `:actuation/dispatch-process-step`/
   `:actuation/finalize-yield-audit`, always human-gated -- see README
   `Actuation`)."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (defn- unsigned-certificate
   "Every certificate this actor produces is UNSIGNED -- signature is the
@@ -77,7 +77,7 @@
     (throw (ex-info "process-step-dispatch: jurisdiction required" {})))
   (when (< sequence 0)
     (throw (ex-info "process-step-dispatch: sequence must be >= 0" {})))
-  (let [dispatch-number (str (str/upper-case jurisdiction) "-DSP-" (zero-pad sequence 6))
+  (let [dispatch-number (str (str/upper jurisdiction) "-DSP-" (zero-pad sequence 6))
         record {"record_id" dispatch-number
                 "kind" "process-step-dispatch-draft"
                 "lot_id" lot-id
@@ -102,7 +102,7 @@
     (throw (ex-info "yield-audit: jurisdiction required" {})))
   (when (< sequence 0)
     (throw (ex-info "yield-audit: sequence must be >= 0" {})))
-  (let [audit-number (str (str/upper-case jurisdiction) "-YLD-" (zero-pad sequence 6))
+  (let [audit-number (str (str/upper jurisdiction) "-YLD-" (zero-pad sequence 6))
         record {"record_id" audit-number
                 "kind" "yield-audit-draft"
                 "lot_id" lot-id
