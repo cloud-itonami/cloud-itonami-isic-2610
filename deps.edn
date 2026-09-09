@@ -90,7 +90,7 @@
   :render-html {:main-opts ["-m" "fab.render-html"]}
   :test {:extra-paths ["test"]
          :extra-deps {io.github.cognitect-labs/test-runner
-                      {:git/tag "v0.5.1" :git/sha "dfb30dd"}}
+                      {:git/tag "v0.5.1" :git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}}
          :main-opts ["-m" "cognitect.test-runner"]
          :exec-fn cognitect.test-runner.api/test}
   ;; ADR-2607999980's critical end-to-end proof: a GENUINE cross-repo
@@ -113,7 +113,7 @@
   :cross-repo-test
   {:extra-paths ["test-cross-repo"]
    :extra-deps {io.github.cognitect-labs/test-runner
-                {:git/tag "v0.5.1" :git/sha "dfb30dd"}
+                {:git/tag "v0.5.1" :git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}
                 io.github.cloud-itonami/cloud-itonami-isic-0729
                 {:local/root "../cloud-itonami-isic-0729"}}
    :main-opts ["-m" "cognitect.test-runner" "-d" "test-cross-repo"]
