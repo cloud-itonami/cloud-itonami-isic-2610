@@ -80,11 +80,11 @@
   ;; io.github.com-junkawasaki/langchain-clj. langgraph declares the same
   ;; library as io.github.kotoba-lang/langchain, so the entry matched no
   ;; node in the resolved tree and never reached the classpath -- verified
-  ;; with `clojure -Stree`/-Spath, unchanged before and after removal.
+  ;; with `kbb -Stree`/-Spath, unchanged before and after removal.
   :dev {}
-  ;; clojure -M:dev:run  -> drive the demo through one OperationActor
+  ;; kbb -M:dev:run  -> drive the demo through one OperationActor
   :run {:main-opts ["-m" "fab.sim"]}
-  ;; clojure -M:dev:render-html [out-file] -> build-time regeneration of
+  ;; kbb -M:dev:render-html [out-file] -> build-time regeneration of
   ;; docs/samples/operator-console.html through the real actor
   ;; (ADR-2607189300 checklist item 2 / flagship-wave5).
   :render-html {:main-opts ["-m" "fab.render-html"]}
@@ -99,7 +99,7 @@
   ;; and read back through that repo's OWN store, -> a real kotoba.
   ;; pedigree record), fed as plain EDN into this actor's governor.
   ;; Kept out of the default :test alias (and its own test-cross-
-  ;; repo/ source root) so plain `clojure -M:dev:test` never REQUIRES
+  ;; repo/ source root) so plain `kbb -M:dev:test` never REQUIRES
   ;; a same-org sibling checkout that a casual fork of just this repo
   ;; would not have -- the same workspace-sibling :local/root
   ;; convention `io.github.kotoba-lang/robotics` above already uses,

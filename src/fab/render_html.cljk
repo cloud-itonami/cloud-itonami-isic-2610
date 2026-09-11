@@ -6,7 +6,7 @@
   `docs/samples/operator-console.html` (generic missions/actions, no lot
   ids, no real actor run). This namespace drives the REAL actor stack
   (`fab.operation` -> `fab.governor` -> `fab.store`) through a scenario
-  adapted from this repo's own `fab.sim` demo driver (`clojure -M:dev:run`,
+  adapted from this repo's own `fab.sim` demo driver (`kbb -M:dev:run`,
   confirmed to use seeded lot ids that match `fab.store/demo-data` and to
   exercise real physics-2d wire-bond pull-test simulation via
   `fab.robotics`/`fab.simphysics`), and renders the result
@@ -14,7 +14,7 @@
   content, byte-identical across reruns against the same seed (verify by
   diffing two consecutive runs before shipping).
 
-  Usage: `clojure -M:dev:render-html [out-file]`
+  Usage: `kbb -M:dev:render-html [out-file]`
   (default `docs/samples/operator-console.html`)."
   (:require [jp-go-dds.skin]
             [kotoba.lang.text :as str]
@@ -228,7 +228,7 @@
      "<main>\n"
      "  <section class=\"card\">\n"
      "    <h2>Lots</h2>\n"
-     "    <p class=\"muted\">Demo snapshot — build-time-generated from <code>fab.store</code> via <code>fab.render-html</code> (<code>clojure -M:dev:render-html</code>), regenerated when the actor's real behavior changes.</p>\n"
+     "    <p class=\"muted\">Demo snapshot — build-time-generated from <code>fab.store</code> via <code>fab.render-html</code> (<code>kbb -M:dev:render-html</code>), regenerated when the actor's real behavior changes.</p>\n"
      "    <table>\n"
      "      <thead><tr><th>Lot</th><th>Name</th><th>Jurisdiction</th><th>Yield</th><th>Defect flag</th><th>Bond-pull (physics-2d)</th><th>Status</th></tr></thead>\n"
      "      <tbody>\n"

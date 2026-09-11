@@ -1,5 +1,5 @@
 (ns fab.sim
-  "Demo driver -- `clojure -M:dev:run`. `robotics/simulate-process-
+  "Demo driver -- `kbb -M:dev:run`. `robotics/simulate-process-
   step` now actually runs `fab.simphysics`'s real `physics-2d`-backed
   time-stepped wire-bond pull-test simulation (ADR-2607152000,
   generalizing ADR-2607151600's automotive pilot to this vertical) --
