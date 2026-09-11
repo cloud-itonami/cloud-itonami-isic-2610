@@ -17,7 +17,7 @@
   establishes.
 
   Both implement the same protocol and pass the same contract
-  (test/fab/store_contract_test.clj), which is the whole point: the
+  (test/fab/store_contract_test.cljk), which is the whole point: the
   actor, the Fab Operations Governor and the audit ledger never know
   which SSoT they run on.
 

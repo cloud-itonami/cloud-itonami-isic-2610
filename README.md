@@ -110,7 +110,7 @@ governor`'s `:actuation/dispatch-process-step`/`:actuation/finalize-
 yield-audit` high-stakes gate and `fab.phase`'s phase table, which
 never puts `:actuation/dispatch-process-step`/`:actuation/finalize-
 yield-audit` in any phase's `:auto` set) -- see `fab.phase`'s
-docstring and `test/fab/phase_test.clj`'s `dispatch-process-step-
+docstring and `test/fab/phase_test.cljk`'s `dispatch-process-step-
 never-auto-at-any-phase`/`finalize-yield-audit-never-auto-at-any-
 phase`. The actor may draft, check and recommend; a human fab
 engineer is always the one who actually dispatches a process step or
@@ -250,16 +250,16 @@ This blueprint resolves its technology stack via
 
 | File | Role |
 |---|---|
-| `src/fab/store.cljc` | **Store** protocol -- `MemStore` ‖ `DatomicStore` (`langchain.db`) + append-only audit ledger + separate process-step-dispatch/yield-audit history. No dynamically-filed sub-record -- both actuation ops act directly on a pre-seeded lot, and the double-actuation guards check dedicated `:process-step-dispatched?`/`:yield-audit-finalized?` booleans rather than a `:status` value |
-| `src/fab/registry.cljc` | Process-step-dispatch + yield-audit draft records, plus `yield-rate-insufficient?` -- the FOURTH instance of this fleet's ratio-based check family (`leasing`/`behavioral`/`union` established the first three), MINIMUM-floor direction |
-| `src/fab/facts.cljc` | Per-jurisdiction fab process-safety catalog (national chemical/gas-handling regulator + SEMI international standards) with an official spec-basis citation per entry, honest coverage reporting |
-| `src/fab/fabadvisor.cljc` | **Fab Advisor** -- `mock-advisor` ‖ `llm-advisor`; intake/verification/defect-screening/robotics-simulation/process-step-dispatch/yield-audit proposals |
-| `src/fab/robotics.cljc` | Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission (`kotoba.robotics` mission/action/telemetry-proof), `bond-pull-strength-out-of-range?` ground truth + `simulation-out-of-tolerance?` independent recheck for the governor (ADR-2607142800/ADR-2607150500), now backed by a REAL `physics-2d` time-stepped simulation (ADR-2607152000) |
-| `src/fab/simphysics.cljc` | **REAL** time-stepped rigid-body wire-bond pull-test simulation on `kotoba-lang/physics-2d`'s real impulse solver -- derives `:bond-pull-strength-actual` from an actual simulated trajectory, not a hand-set field (ADR-2607152000) |
-| `src/fab/governor.cljc` | **Fab Operations Governor** -- 5 HARD checks (spec-basis · evidence-incomplete · robotics-simulation missing/independently-out-of-tolerance (new, ADR-2607150500) · process-defect-flag-unresolved, unconditional evaluation, the THIRTY-SECOND grounding of this discipline · yield-rate-insufficient, pure ground-truth ratio recompute) + already-dispatched/already-audited guards + 1 soft (confidence/actuation gate) |
-| `src/fab/phase.cljc` | **Phase 0→3** -- read-only → assisted intake → assisted verify → supervised (both process-step dispatch and yield-audit finalization always human; lot intake is the ONLY auto-eligible op, no direct capital risk) |
-| `src/fab/operation.cljc` | **OperationActor** -- langgraph-clj StateGraph |
-| `src/fab/sim.cljc` | demo driver |
+| `src/fab/store.cljk` | **Store** protocol -- `MemStore` ‖ `DatomicStore` (`langchain.db`) + append-only audit ledger + separate process-step-dispatch/yield-audit history. No dynamically-filed sub-record -- both actuation ops act directly on a pre-seeded lot, and the double-actuation guards check dedicated `:process-step-dispatched?`/`:yield-audit-finalized?` booleans rather than a `:status` value |
+| `src/fab/registry.cljk` | Process-step-dispatch + yield-audit draft records, plus `yield-rate-insufficient?` -- the FOURTH instance of this fleet's ratio-based check family (`leasing`/`behavioral`/`union` established the first three), MINIMUM-floor direction |
+| `src/fab/facts.cljk` | Per-jurisdiction fab process-safety catalog (national chemical/gas-handling regulator + SEMI international standards) with an official spec-basis citation per entry, honest coverage reporting |
+| `src/fab/fabadvisor.cljk` | **Fab Advisor** -- `mock-advisor` ‖ `llm-advisor`; intake/verification/defect-screening/robotics-simulation/process-step-dispatch/yield-audit proposals |
+| `src/fab/robotics.cljk` | Robot wafer-probe/optical-inspection/wire-bond-pull-test verification mission (`kotoba.robotics` mission/action/telemetry-proof), `bond-pull-strength-out-of-range?` ground truth + `simulation-out-of-tolerance?` independent recheck for the governor (ADR-2607142800/ADR-2607150500), now backed by a REAL `physics-2d` time-stepped simulation (ADR-2607152000) |
+| `src/fab/simphysics.cljk` | **REAL** time-stepped rigid-body wire-bond pull-test simulation on `kotoba-lang/physics-2d`'s real impulse solver -- derives `:bond-pull-strength-actual` from an actual simulated trajectory, not a hand-set field (ADR-2607152000) |
+| `src/fab/governor.cljk` | **Fab Operations Governor** -- 5 HARD checks (spec-basis · evidence-incomplete · robotics-simulation missing/independently-out-of-tolerance (new, ADR-2607150500) · process-defect-flag-unresolved, unconditional evaluation, the THIRTY-SECOND grounding of this discipline · yield-rate-insufficient, pure ground-truth ratio recompute) + already-dispatched/already-audited guards + 1 soft (confidence/actuation gate) |
+| `src/fab/phase.cljk` | **Phase 0→3** -- read-only → assisted intake → assisted verify → supervised (both process-step dispatch and yield-audit finalization always human; lot intake is the ONLY auto-eligible op, no direct capital risk) |
+| `src/fab/operation.cljk` | **OperationActor** -- langgraph-clj StateGraph |
+| `src/fab/sim.cljk` | demo driver |
 | `test/fab/*_test.clj` | governor contract · phase invariants · store parity · registry conformance · facts coverage |
 
 ## Business-process coverage (honest)
