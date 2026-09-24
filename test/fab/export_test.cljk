@@ -2,7 +2,7 @@
   "`fab.export/pedigree-for-lot`'s cross-actor supply-chain-linkage
   export (ADR-2607999980, direct port of ADR-2607999950's pattern to
   the smartphone chain)."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [fab.export :as export]
             [fab.robotics :as robotics]
             [kotoba.pedigree :as pedigree]))

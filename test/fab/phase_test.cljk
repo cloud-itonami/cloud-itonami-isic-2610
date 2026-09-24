@@ -3,7 +3,7 @@
   regress on: `:actuation/dispatch-process-step`/`:actuation/
   finalize-yield-audit` must NEVER be a member of any phase's `:auto`
   set."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [fab.phase :as phase]))
 
 (deftest dispatch-process-step-never-auto-at-any-phase

@@ -3,7 +3,7 @@
   from fab.robotics/mission-actions's real 3-step sequence
   (ADR-2607992500). Direct port of autoparts.motionplan-test's
   assertions, adapted to fab's own mission-actions/lot shape."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [fab.cad :as cad]
             [fab.motionplan :as motionplan]
             [fab.robotics :as robotics]))
