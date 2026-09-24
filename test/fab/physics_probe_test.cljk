@@ -1,0 +1,54 @@
+(ns fab.physics-probe-test
+  "The probe is the bot's only source of \"measured\"; these pin that it
+  measures (every run numeric, count = expected), that the numbers come
+  from the simulation (the derived diameter window really straddles the
+  band), and that a changed solver would show."
+  (:require [clojure.test :refer [deftest is testing]]
+            [fab.physics-probe :as probe]
+            [fab.robotics :as robotics]))
+
+(deftest probe-measures-every-run
+  (let [p (probe/probe)]
+    (is (= "itonami.physical-ai.probe.v1" (:physics-probe/schema p)))
+    (is (pos? (:count p)))
+    (is (= (:count p) (:expected p) (count (:runs p))))
+    (testing "every run carries a numeric force and tick count from the trajectory"
+      (doseq [r (:runs p)]
+        (is (number? (get-in r [:quantities :sim-bond-pull-force-gf])))
+        (is (pos? (get-in r [:quantities :ticks])))))))
+
+(defn- diam-runs [p] (take (count probe/sweep-wire-diameters-um) (:runs p)))
+
+(deftest force-rises-with-wire-diameter-across-the-sweep
+  (let [forces (map #(get-in % [:quantities :sim-bond-pull-force-gf]) (diam-runs (probe/probe)))]
+    (is (apply < forces))))
+
+(deftest seed-lot-verdicts
+  (testing "the 15 um seed lot (lot-5) falls below the band; the 24..26.5 um lots land inside"
+    (let [by-d (into {} (map (fn [r] [(get-in r [:input :bond-wire-diameter-um]) (:out-of-tolerance? r)])
+                             (diam-runs (probe/probe))))]
+      (is (true? (by-d 15.0)))
+      (is (every? false? (map by-d [24.0 25.0 25.5 26.5]))))))
+
+(deftest invariances-are-measured
+  (let [d (:derived (probe/probe))]
+    (is (number? (:decel-diameter-spread-mps2 d)))
+    (is (number? (:geometry-force-spread-gf d)))
+    (testing "decel is kinematic (v^2/travel) and the envelope never reaches the reading"
+      (is (zero? (:decel-diameter-spread-mps2 d)))
+      (is (zero? (:geometry-force-spread-gf d))))))
+
+(deftest derived-diameter-window-straddles-the-band
+  (let [{:keys [min-passing-diameter-um max-passing-diameter-um]} (:derived (probe/probe))
+        force (fn [d] (:sim-bond-pull-force-gf (robotics/bond-pull-telemetry-for {:bond-wire-diameter-um d})))]
+    (is (number? min-passing-diameter-um))
+    (is (number? max-passing-diameter-um))
+    (is (< min-passing-diameter-um 25.0 max-passing-diameter-um))
+    (testing "at each edge the force reaches the bound; 1% thinner it does not"
+      (is (>= (force min-passing-diameter-um) 6.0))
+      (is (< (force (* 0.99 min-passing-diameter-um)) 6.0))
+      (is (>= (force max-passing-diameter-um) 12.0))
+      (is (< (force (* 0.99 max-passing-diameter-um)) 12.0)))))
+
+(deftest bracket-that-does-not-straddle-answers-nil
+  (is (nil? (probe/diameter-at-force-um 6.0 30.0 60.0 10))))
