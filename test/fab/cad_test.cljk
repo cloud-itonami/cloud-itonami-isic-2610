@@ -4,7 +4,7 @@
   discipline, and envelope-solid/envelope-mesh's genuine tessellation
   output. Direct port of autoparts.cad-test's assertions, adapted to
   fab's own fixed AABB constants."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [fab.cad :as cad]
             [fab.simphysics :as simphysics]))
 

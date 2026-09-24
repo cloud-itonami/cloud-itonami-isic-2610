@@ -8,7 +8,7 @@
   and to fab.simphysics's own disclosed frame-translation invariance
   (see the last two tests -- a real, verified difference from
   autoparts.scene, not assumed identical)."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [fab.simphysics :as simphysics]
             [fab.scene :as scene]))
 

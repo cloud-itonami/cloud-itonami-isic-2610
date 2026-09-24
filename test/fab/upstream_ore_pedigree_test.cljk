@@ -12,7 +12,7 @@
   itself is correct in isolation, independent of which upstream actor
   produced the pedigree. Mirrors `steelworks.upstream-ore-pedigree-
   test`, one link earlier in this fleet's pattern."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [kotoba.pedigree :as pedigree]
             [langgraph.graph :as g]
             [fab.governor :as governor]

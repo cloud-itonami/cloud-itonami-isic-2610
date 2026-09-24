@@ -8,7 +8,7 @@
   own docstring: unlike autoparts.robotics-test (where CAD geometry
   genuinely shifts :trajectory), here it does NOT -- verified below,
   not just asserted in prose."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [kotoba.test :refer [deftest is testing]]
             [fab.cad :as cad]
             [fab.simphysics :as simphysics]))
 
